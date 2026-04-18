@@ -218,11 +218,145 @@ pub fn tabulate_scatter_table<'py>(
     Ok((s_arr.into_pyarray_bound(py), z_arr.into_pyarray_bound(py)))
 }
 
+/// Batch tabulator with fixed-quadrature orientation averaging.
+///
+/// Matches ``orientation.orient_averaged_fixed``: for each diameter a single
+/// T-matrix is built, and the amplitude matrix is evaluated over a product
+/// grid of ``alphas`` (uniformly sampled in [0, 360)) and ``(betas,
+/// beta_weights)`` (Gauss-Legendre against the orientation PDF). Per-diameter
+/// S,Z are the weighted average ``sum(w_beta * S_i) * (aw / sum(w_beta))``
+/// with ``aw = 1/len(alphas)`` — matching the Python reference exactly.
+///
+/// Returns `(S_table, Z_table)` with the same layout as
+/// `tabulate_scatter_table`.
+#[pyfunction]
+#[pyo3(signature = (
+    diameters, axis_ratios, ms_real, ms_imag, geometries,
+    alphas, betas, beta_weights,
+    rat, lam, np, ddelt, ndgs
+))]
+#[allow(clippy::too_many_arguments)]
+pub fn tabulate_scatter_table_orient_avg<'py>(
+    py: Python<'py>,
+    diameters: PyReadonlyArray1<f64>,
+    axis_ratios: PyReadonlyArray1<f64>,
+    ms_real: PyReadonlyArray1<f64>,
+    ms_imag: PyReadonlyArray1<f64>,
+    geometries: Vec<(f64, f64, f64, f64, f64, f64)>,
+    alphas: PyReadonlyArray1<f64>,
+    betas: PyReadonlyArray1<f64>,
+    beta_weights: PyReadonlyArray1<f64>,
+    rat: f64,
+    lam: f64,
+    np: i32,
+    ddelt: f64,
+    ndgs: usize,
+) -> PyResult<(Bound<'py, PyArray4<Complex64>>, Bound<'py, PyArray4<f64>>)> {
+    let d = diameters.as_slice()?;
+    let eps = axis_ratios.as_slice()?;
+    let mr = ms_real.as_slice()?;
+    let mi = ms_imag.as_slice()?;
+    let n = d.len();
+    if eps.len() != n || mr.len() != n || mi.len() != n {
+        return Err(PyValueError::new_err(
+            "diameters, axis_ratios, ms_real, ms_imag must have the same length",
+        ));
+    }
+    let alphas = alphas.as_slice()?.to_vec();
+    let betas = betas.as_slice()?.to_vec();
+    let beta_w = beta_weights.as_slice()?.to_vec();
+    if betas.len() != beta_w.len() {
+        return Err(PyValueError::new_err(
+            "betas and beta_weights must have the same length",
+        ));
+    }
+    if geometries.is_empty() || alphas.is_empty() || betas.is_empty() {
+        return Err(PyValueError::new_err(
+            "geometries, alphas, betas must all be non-empty",
+        ));
+    }
+    if lam <= 0.0 {
+        return Err(PyValueError::new_err("lam must be positive"));
+    }
+
+    let d: Vec<f64> = d.to_vec();
+    let eps: Vec<f64> = eps.to_vec();
+    let mr: Vec<f64> = mr.to_vec();
+    let mi: Vec<f64> = mi.to_vec();
+    let ng = geometries.len();
+    let aw_over_sw = (1.0 / alphas.len() as f64) / beta_w.iter().sum::<f64>();
+
+    let mut s_flat = vec![Complex64::new(0.0, 0.0); n * ng * 4];
+    let mut z_flat = vec![0.0_f64; n * ng * 16];
+    let s_stride = ng * 4;
+    let z_stride = ng * 16;
+
+    py.allow_threads(|| {
+        s_flat
+            .par_chunks_mut(s_stride)
+            .zip(z_flat.par_chunks_mut(z_stride))
+            .enumerate()
+            .for_each(|(i, (s_row, z_row))| {
+                let cfg = TMatrixConfig {
+                    axi: d[i] / 2.0,
+                    rat,
+                    lam,
+                    m: Complex64::new(mr[i], mi[i]),
+                    eps: eps[i],
+                    np,
+                    ddelt,
+                    ndgs,
+                };
+                let state = rs_calctmat(cfg);
+                for (g_idx, g) in geometries.iter().enumerate() {
+                    // Accumulate weighted sum of S and Z over the (alpha, beta) grid.
+                    let mut s_acc = [[Complex64::new(0.0, 0.0); 2]; 2];
+                    let mut z_acc = [[0.0_f64; 4]; 4];
+                    for &alpha in &alphas {
+                        for (&beta, &w) in betas.iter().zip(beta_w.iter()) {
+                            let (s, z) = calcampl(
+                                &state, lam, g.0, g.1, g.2, g.3, alpha, beta,
+                            );
+                            for a in 0..2 {
+                                for b in 0..2 {
+                                    s_acc[a][b] += Complex64::new(w, 0.0) * s[a][b];
+                                }
+                            }
+                            for a in 0..4 {
+                                for b in 0..4 {
+                                    z_acc[a][b] += w * z[a][b];
+                                }
+                            }
+                        }
+                    }
+                    let s_off = g_idx * 4;
+                    s_row[s_off] = s_acc[0][0] * aw_over_sw;
+                    s_row[s_off + 1] = s_acc[0][1] * aw_over_sw;
+                    s_row[s_off + 2] = s_acc[1][0] * aw_over_sw;
+                    s_row[s_off + 3] = s_acc[1][1] * aw_over_sw;
+                    let z_off = g_idx * 16;
+                    for a in 0..4 {
+                        for b in 0..4 {
+                            z_row[z_off + a * 4 + b] = z_acc[a][b] * aw_over_sw;
+                        }
+                    }
+                }
+            });
+    });
+
+    let s_arr = ndarray::Array4::from_shape_vec((n, ng, 2, 2), s_flat)
+        .map_err(|e| PyValueError::new_err(e.to_string()))?;
+    let z_arr = ndarray::Array4::from_shape_vec((n, ng, 4, 4), z_flat)
+        .map_err(|e| PyValueError::new_err(e.to_string()))?;
+    Ok((s_arr.into_pyarray_bound(py), z_arr.into_pyarray_bound(py)))
+}
+
 pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<TMatrixHandle>()?;
     m.add_function(wrap_pyfunction!(calctmat, m)?)?;
     m.add_function(wrap_pyfunction!(calcampl_py, m)?)?;
     m.add_function(wrap_pyfunction!(tabulate_scatter_table, m)?)?;
+    m.add_function(wrap_pyfunction!(tabulate_scatter_table_orient_avg, m)?)?;
     m.add_function(wrap_pyfunction!(mie_qsca, m)?)?;
     m.add_function(wrap_pyfunction!(mie_qext, m)?)?;
     // Shape constants.

@@ -98,6 +98,40 @@ def bench_orient_averaged_fixed():
     return _time(py_fn, 5), _time(rs_fn, 5)
 
 
+def bench_psd_tabulate_orient_avg(num_points):
+    """Orientation-averaged (n_alpha=4, n_beta=8) PSD tabulation."""
+    kwargs = dict(wavelength=6.283185307, m=complex(1.5, 0.01), axis_ratio=2.0,
+                  ddelt=1e-4, ndgs=2)
+
+    def py_fn():
+        s = py_tm.Scatterer(**kwargs)
+        s.set_geometry(geom_horiz_back)
+        s.or_pdf = py_orient.gaussian_pdf(std=20.0, mean=90.0)
+        s.orient = py_orient.orient_averaged_fixed
+        s.n_alpha = 4
+        s.n_beta = 8
+        s.psd_integrator = py_psd.PSDIntegrator()
+        s.psd_integrator.num_points = num_points
+        s.psd_integrator.D_max = 4.0
+        s.psd = py_psd.GammaPSD(D0=1.0, Nw=1e3, mu=4)
+        s.psd_integrator.init_scatter_table(s)
+
+    def rs_fn():
+        s = Scatterer(**kwargs)
+        s.set_geometry(geom_horiz_back)
+        s.or_pdf = rs_orient.gaussian_pdf(std=20.0, mean=90.0)
+        s.orient = rs_orient.orient_averaged_fixed
+        s.n_alpha = 4
+        s.n_beta = 8
+        s.psd_integrator = rs_psd.PSDIntegrator()
+        s.psd_integrator.num_points = num_points
+        s.psd_integrator.D_max = 4.0
+        s.psd = rs_psd.GammaPSD(D0=1.0, Nw=1e3, mu=4)
+        s.psd_integrator.init_scatter_table(s)
+
+    return _time(py_fn, 2), _time(rs_fn, 2)
+
+
 def bench_psd_tabulate(num_points):
     """Tabulate S,Z at `num_points` diameters (dominant cost of a PSD run)."""
     kwargs = dict(wavelength=6.5, m=complex(1.5, 0.5), axis_ratio=1.0,
@@ -150,6 +184,10 @@ def main():
         ("orient-averaged fixed (4×8 = 32)", bench_orient_averaged_fixed),
         ("PSD init_scatter_table, 32 points", lambda: bench_psd_tabulate(32)),
         ("PSD init_scatter_table, 64 points", lambda: bench_psd_tabulate(64)),
+        ("PSD + orient-avg (4×8), 32 points",
+         lambda: bench_psd_tabulate_orient_avg(32)),
+        ("PSD + orient-avg (4×8), 64 points",
+         lambda: bench_psd_tabulate_orient_avg(64)),
     ]
 
     print(f"{'case':<44} {'pytmatrix':>12} {'rupytmatrix':>14} {'speedup':>10}")

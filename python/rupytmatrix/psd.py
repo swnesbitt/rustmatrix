@@ -343,13 +343,18 @@ class PSDIntegrator:
         else:
             axis_ratios = np.full(self.num_points, float(tm.axis_ratio))
 
-        # Rust fast path: single-orientation tabulation, no angular
-        # integration. Covers the common case (and pytmatrix's own
-        # ``test_psd`` parity target).
-        use_rust = (
+        # Rust fast paths: single orientation and fixed-quadrature
+        # orientation averaging, both parallelised across diameters.
+        # Adaptive orientation averaging (scipy.dblquad) and the
+        # ``angular_integration`` path still fall through to Python,
+        # because they rely on per-sample Python callbacks.
+        orient_fn = getattr(tm, "orient", _orientation.orient_single)
+        use_rust_single = (
+            not angular_integration and orient_fn is _orientation.orient_single
+        )
+        use_rust_orient_avg = (
             not angular_integration
-            and getattr(tm, "orient", _orientation.orient_single)
-            is _orientation.orient_single
+            and orient_fn is _orientation.orient_averaged_fixed
         )
 
         try:
@@ -365,21 +370,39 @@ class PSDIntegrator:
                         for pol in ("h_pol", "v_pol"):
                             self._angular_table[key][pol][geom] = np.empty(self.num_points)
 
-            if use_rust:
-                # All geometries, all diameters, in one GIL-released parallel sweep.
+            if use_rust_single or use_rust_orient_avg:
                 geoms = [tuple(g) for g in self.geometries]
-                S_batch, Z_batch = _core.tabulate_scatter_table(
+                common = (
                     np.ascontiguousarray(self._psd_D, dtype=float),
                     np.ascontiguousarray(axis_ratios, dtype=float),
                     np.ascontiguousarray(self._m_table.real, dtype=float),
                     np.ascontiguousarray(self._m_table.imag, dtype=float),
                     geoms,
+                )
+                extras = (
                     float(tm.radius_type),
                     float(tm.wavelength),
                     int(tm.shape),
                     float(tm.ddelt),
                     int(tm.ndgs),
                 )
+                if use_rust_orient_avg:
+                    # Build the (alpha, beta) quadrature the same way the
+                    # Python orient_averaged_fixed does, then hand the nodes
+                    # to the Rust averager.
+                    tm._init_orient()
+                    alphas = np.linspace(0, 360, tm.n_alpha + 1)[:-1]
+                    S_batch, Z_batch = _core.tabulate_scatter_table_orient_avg(
+                        *common,
+                        np.ascontiguousarray(alphas, dtype=float),
+                        np.ascontiguousarray(tm.beta_p, dtype=float),
+                        np.ascontiguousarray(tm.beta_w, dtype=float),
+                        *extras,
+                    )
+                else:
+                    S_batch, Z_batch = _core.tabulate_scatter_table(
+                        *common, *extras,
+                    )
                 # S_batch: (num_points, num_geoms, 2, 2); Z_batch: (..., 4, 4).
                 # Our on-disk layout is (2, 2, num_points) per geom — reshape.
                 for g_idx, geom in enumerate(self.geometries):

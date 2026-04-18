@@ -54,3 +54,19 @@ def tabulate_scatter_table(
     ddelt: float,
     ndgs: int,
 ) -> tuple[np.ndarray, np.ndarray]: ...
+
+def tabulate_scatter_table_orient_avg(
+    diameters: np.ndarray,
+    axis_ratios: np.ndarray,
+    ms_real: np.ndarray,
+    ms_imag: np.ndarray,
+    geometries: list[tuple[float, float, float, float, float, float]],
+    alphas: np.ndarray,
+    betas: np.ndarray,
+    beta_weights: np.ndarray,
+    rat: float,
+    lam: float,
+    np: int,
+    ddelt: float,
+    ndgs: int,
+) -> tuple[np.ndarray, np.ndarray]: ...

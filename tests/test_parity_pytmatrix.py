@@ -249,3 +249,48 @@ def test_orient_averaged_fixed_parity(PyScatterer):
     rs.n_beta = 8
 
     _compare(py, rs, s_tol=5e-3, z_tol=5e-3)
+
+
+def test_psd_integration_orient_averaged_parity(PyScatterer):
+    """PSD + orientation-averaged tabulation should match pytmatrix.
+
+    Exercises the Rust tabulate_scatter_table_orient_avg fast path by
+    combining a GammaPSD with orient_averaged_fixed (gaussian PDF). If the
+    Rust per-diameter (alpha, beta) loop diverges from the Python
+    reference we'd see it here since S and Z are integrated over both
+    orientation and size.
+    """
+    from pytmatrix import orientation as py_orient, psd as py_psd
+
+    from rupytmatrix import orientation as rs_orient, psd as rs_psd
+
+    geom = (90.0, 90.0, 0.0, 180.0, 0.0, 0.0)
+    m = complex(1.5, 0.01)
+
+    py = PyScatterer(wavelength=6.283185307, m=m, axis_ratio=2.0,
+                     ddelt=1e-4, ndgs=2)
+    py.set_geometry(geom)
+    py.or_pdf = py_orient.gaussian_pdf(std=20.0, mean=90.0)
+    py.orient = py_orient.orient_averaged_fixed
+    py.n_alpha = 4
+    py.n_beta = 8
+    py.psd_integrator = py_psd.PSDIntegrator()
+    py.psd_integrator.num_points = 16
+    py.psd_integrator.D_max = 4.0
+    py.psd = py_psd.GammaPSD(D0=1.0, Nw=1e3, mu=4)
+    py.psd_integrator.init_scatter_table(py)
+
+    rs = RsScatterer(wavelength=6.283185307, m=m, axis_ratio=2.0,
+                     ddelt=1e-4, ndgs=2)
+    rs.set_geometry(geom)
+    rs.or_pdf = rs_orient.gaussian_pdf(std=20.0, mean=90.0)
+    rs.orient = rs_orient.orient_averaged_fixed
+    rs.n_alpha = 4
+    rs.n_beta = 8
+    rs.psd_integrator = rs_psd.PSDIntegrator()
+    rs.psd_integrator.num_points = 16
+    rs.psd_integrator.D_max = 4.0
+    rs.psd = rs_psd.GammaPSD(D0=1.0, Nw=1e3, mu=4)
+    rs.psd_integrator.init_scatter_table(rs)
+
+    _compare(py, rs, s_tol=5e-3, z_tol=5e-3)

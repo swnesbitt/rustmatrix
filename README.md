@@ -136,10 +136,13 @@ Fully implemented and unit-tested (`cargo test --lib`, `pytest`):
   `orient_averaged_fixed`).
 * Size-distribution integration: `ExponentialPSD`, `UnnormalizedGammaPSD`,
   `GammaPSD`, `BinnedPSD`, and `PSDIntegrator` (tabulate-then-trapezoid
-  averaging over an ``N(D)``). The single-orientation tabulation path is
-  implemented in Rust and parallelised across diameters via `rayon`
-  (GIL released), making 64-point PSD builds ~4× faster than the Fortran
-  pytmatrix backend. Parity-verified against pytmatrix's ``test_psd``.
+  averaging over an ``N(D)``). Both the single-orientation and
+  fixed-quadrature orientation-averaged tabulation paths are implemented
+  in Rust and parallelised across diameters via `rayon` (GIL released).
+  Against Fortran pytmatrix: ~4× faster on single-orient PSD and ~10×
+  faster on orientation-averaged PSD at 64 points. Parity-verified
+  against pytmatrix's ``test_psd`` plus a combined orient-averaged /
+  PSD-integrated test.
 * Angular-integrated scattering helpers (`sca_intensity`, `ldr`,
   `sca_xsect`, `ext_xsect`, `ssa`, `asym`) and radar-band auxiliary
   constants (`wl_S`..`wl_W`, `K_w_sqr`, geometry presets, Thurai /
