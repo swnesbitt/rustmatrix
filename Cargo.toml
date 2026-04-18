@@ -2,7 +2,7 @@
 name = "rupytmatrix"
 version = "0.1.0"
 edition = "2021"
-authors = ["Stephen Nesbitt <swnesbitt@gmail.com>"]
+authors = ["Stephen Nesbitt <snesbitt@illinois.edu>"]
 license = "MIT"
 description = "Rust-backed T-matrix scattering for nonspherical particles (port of pytmatrix)"
 repository = "https://github.com/swnesbitt/rupytmatrix"
@@ -21,6 +21,7 @@ num-complex = "0.4"
 ndarray = "0.16"
 nalgebra = { version = "0.33", features = ["std"] }
 numpy = "0.22"
+rayon = "1.10"
 
 [dependencies.pyo3]
 version = "0.22"

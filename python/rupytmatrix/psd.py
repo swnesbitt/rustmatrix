@@ -27,7 +27,8 @@ from typing import Callable, Optional
 import numpy as np
 from scipy.special import gamma
 
-from . import tmatrix_aux
+from . import _core, tmatrix_aux
+from . import orientation as _orientation
 
 # numpy 2.0 renamed trapz -> trapezoid; scipy >= 1.14 dropped trapz from
 # scipy.integrate. Cover both.
@@ -328,6 +329,29 @@ class PSDIntegrator:
         old_geom = tm.get_geometry()
         old_psd_integrator = tm.psd_integrator
 
+        # Evaluate per-diameter m and axis_ratio up front so the Rust
+        # tabulator (which can't call back into Python) has plain arrays.
+        if self.m_func is not None:
+            for i, D in enumerate(self._psd_D):
+                self._m_table[i] = self.m_func(D)
+        else:
+            self._m_table[:] = tm.m
+        if self.axis_ratio_func is not None:
+            axis_ratios = np.array(
+                [self.axis_ratio_func(D) for D in self._psd_D], dtype=float
+            )
+        else:
+            axis_ratios = np.full(self.num_points, float(tm.axis_ratio))
+
+        # Rust fast path: single-orientation tabulation, no angular
+        # integration. Covers the common case (and pytmatrix's own
+        # ``test_psd`` parity target).
+        use_rust = (
+            not angular_integration
+            and getattr(tm, "orient", _orientation.orient_single)
+            is _orientation.orient_single
+        )
+
         try:
             # Disable PSD integration on the scatterer to avoid recursion
             # through get_SZ.
@@ -341,32 +365,52 @@ class PSDIntegrator:
                         for pol in ("h_pol", "v_pol"):
                             self._angular_table[key][pol][geom] = np.empty(self.num_points)
 
-            for i, D in enumerate(self._psd_D):
-                if verbose:
-                    print(f"Computing point {i} at D={D}...")
-                if self.m_func is not None:
-                    tm.m = self.m_func(D)
-                if self.axis_ratio_func is not None:
-                    tm.axis_ratio = self.axis_ratio_func(D)
-                self._m_table[i] = tm.m
-                tm.radius = D / 2.0
-                for geom in self.geometries:
-                    tm.set_geometry(geom)
-                    S, Z = tm.get_SZ_orient()
-                    self._S_table[geom][:, :, i] = S
-                    self._Z_table[geom][:, :, i] = Z
-                    if angular_integration:
-                        for pol in ("h_pol", "v_pol"):
-                            h_pol = pol == "h_pol"
-                            self._angular_table["sca_xsect"][pol][geom][i] = scatter.sca_xsect(
-                                tm, h_pol=h_pol
-                            )
-                            self._angular_table["ext_xsect"][pol][geom][i] = scatter.ext_xsect(
-                                tm, h_pol=h_pol
-                            )
-                            self._angular_table["asym"][pol][geom][i] = scatter.asym(
-                                tm, h_pol=h_pol
-                            )
+            if use_rust:
+                # All geometries, all diameters, in one GIL-released parallel sweep.
+                geoms = [tuple(g) for g in self.geometries]
+                S_batch, Z_batch = _core.tabulate_scatter_table(
+                    np.ascontiguousarray(self._psd_D, dtype=float),
+                    np.ascontiguousarray(axis_ratios, dtype=float),
+                    np.ascontiguousarray(self._m_table.real, dtype=float),
+                    np.ascontiguousarray(self._m_table.imag, dtype=float),
+                    geoms,
+                    float(tm.radius_type),
+                    float(tm.wavelength),
+                    int(tm.shape),
+                    float(tm.ddelt),
+                    int(tm.ndgs),
+                )
+                # S_batch: (num_points, num_geoms, 2, 2); Z_batch: (..., 4, 4).
+                # Our on-disk layout is (2, 2, num_points) per geom — reshape.
+                for g_idx, geom in enumerate(self.geometries):
+                    self._S_table[geom] = np.moveaxis(S_batch[:, g_idx, :, :], 0, -1)
+                    self._Z_table[geom] = np.moveaxis(Z_batch[:, g_idx, :, :], 0, -1)
+            else:
+                # Fallback: Python loop (orientation-averaged or angular
+                # integration). Keeps callbacks like ``tm.orient`` working.
+                for i, D in enumerate(self._psd_D):
+                    if verbose:
+                        print(f"Computing point {i} at D={D}...")
+                    tm.m = self._m_table[i]
+                    tm.axis_ratio = axis_ratios[i]
+                    tm.radius = D / 2.0
+                    for geom in self.geometries:
+                        tm.set_geometry(geom)
+                        S, Z = tm.get_SZ_orient()
+                        self._S_table[geom][:, :, i] = S
+                        self._Z_table[geom][:, :, i] = Z
+                        if angular_integration:
+                            for pol in ("h_pol", "v_pol"):
+                                h_pol = pol == "h_pol"
+                                self._angular_table["sca_xsect"][pol][geom][i] = (
+                                    scatter.sca_xsect(tm, h_pol=h_pol)
+                                )
+                                self._angular_table["ext_xsect"][pol][geom][i] = (
+                                    scatter.ext_xsect(tm, h_pol=h_pol)
+                                )
+                                self._angular_table["asym"][pol][geom][i] = (
+                                    scatter.asym(tm, h_pol=h_pol)
+                                )
         finally:
             tm.m = old_m
             tm.axis_ratio = old_axis_ratio

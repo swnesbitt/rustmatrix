@@ -41,3 +41,16 @@ def calcampl_py(
 
 def mie_qsca(x: float, mrr: float, mri: float) -> float: ...
 def mie_qext(x: float, mrr: float, mri: float) -> float: ...
+
+def tabulate_scatter_table(
+    diameters: np.ndarray,
+    axis_ratios: np.ndarray,
+    ms_real: np.ndarray,
+    ms_imag: np.ndarray,
+    geometries: list[tuple[float, float, float, float, float, float]],
+    rat: float,
+    lam: float,
+    np: int,
+    ddelt: float,
+    ndgs: int,
+) -> tuple[np.ndarray, np.ndarray]: ...

@@ -118,6 +118,111 @@ def test_psd_integration_parity(PyScatterer):
     _compare(py, rs, s_tol=1e-3, z_tol=1e-3)
 
 
+def test_radar_observables_backscatter_parity(PyScatterer):
+    """Polarimetric radar observables must match pytmatrix for an oblate drop.
+
+    Uses an X-band water drop (m ≈ 7.94 + 2.33j at 10 °C) shaped like a
+    2 mm equi-volume raindrop. Exercises the radar.py layer end-to-end:
+    Zdr, rho_hv, delta_hv — all derived from Z in the backscatter geometry.
+    """
+    from pytmatrix import radar as py_radar
+
+    from rupytmatrix import radar as rs_radar
+    from rupytmatrix.tmatrix_aux import dsr_thurai_2007, geom_horiz_back, wl_X
+
+    m = complex(7.94, 2.33)
+    D_eq = 2.0  # mm
+    axis_ratio = 1.0 / dsr_thurai_2007(D_eq)  # Scatterer takes h/v
+
+    py = PyScatterer(radius=D_eq / 2.0, wavelength=wl_X, m=m,
+                     axis_ratio=axis_ratio, ddelt=1e-4, ndgs=2)
+    py.set_geometry(geom_horiz_back)
+
+    rs = RsScatterer(radius=D_eq / 2.0, wavelength=wl_X, m=m,
+                     axis_ratio=axis_ratio, ddelt=1e-4, ndgs=2)
+    rs.set_geometry(geom_horiz_back)
+
+    # Radar cross-sections (H and V), Zdr, rho_hv, delta_hv.
+    np.testing.assert_allclose(
+        rs_radar.radar_xsect(rs, h_pol=True),
+        py_radar.radar_xsect(py, h_pol=True),
+        rtol=5e-3,
+    )
+    np.testing.assert_allclose(
+        rs_radar.radar_xsect(rs, h_pol=False),
+        py_radar.radar_xsect(py, h_pol=False),
+        rtol=5e-3,
+    )
+    np.testing.assert_allclose(rs_radar.Zdr(rs), py_radar.Zdr(py), rtol=5e-3)
+    np.testing.assert_allclose(
+        rs_radar.rho_hv(rs), py_radar.rho_hv(py), rtol=5e-3, atol=5e-3,
+    )
+    # delta_hv is tiny for rain at X-band; compare with an atol instead
+    # of rtol since it passes through zero.
+    np.testing.assert_allclose(
+        rs_radar.delta_hv(rs), py_radar.delta_hv(py), atol=5e-3,
+    )
+
+
+def test_radar_observables_forward_parity(PyScatterer):
+    """Kdp and Ai (forward geometry) must match pytmatrix."""
+    from pytmatrix import radar as py_radar
+
+    from rupytmatrix import radar as rs_radar
+    from rupytmatrix.tmatrix_aux import dsr_thurai_2007, geom_horiz_forw, wl_X
+
+    m = complex(7.94, 2.33)
+    D_eq = 2.0
+    axis_ratio = 1.0 / dsr_thurai_2007(D_eq)
+
+    py = PyScatterer(radius=D_eq / 2.0, wavelength=wl_X, m=m,
+                     axis_ratio=axis_ratio, ddelt=1e-4, ndgs=2)
+    py.set_geometry(geom_horiz_forw)
+
+    rs = RsScatterer(radius=D_eq / 2.0, wavelength=wl_X, m=m,
+                     axis_ratio=axis_ratio, ddelt=1e-4, ndgs=2)
+    rs.set_geometry(geom_horiz_forw)
+
+    np.testing.assert_allclose(rs_radar.Kdp(rs), py_radar.Kdp(py), rtol=5e-3)
+    np.testing.assert_allclose(
+        rs_radar.Ai(rs, h_pol=True), py_radar.Ai(py, h_pol=True), rtol=5e-3,
+    )
+    np.testing.assert_allclose(
+        rs_radar.Ai(rs, h_pol=False), py_radar.Ai(py, h_pol=False), rtol=5e-3,
+    )
+
+
+def test_refractive_mg_bruggeman_parity():
+    """Maxwell-Garnett and Bruggeman EMAs are numeric ports — should match bit-for-bit."""
+    from pytmatrix import refractive as py_refr
+
+    from rupytmatrix import refractive as rs_refr
+
+    m_ice = complex(1.78, 2e-3)
+    m_air = complex(1.0, 0.0)
+    m_water = complex(7.94, 2.33)
+
+    # Two-component mixes (ice in air, water in air).
+    for m_inc, frac in [(m_ice, 0.3), (m_water, 0.1), (m_ice, 0.6)]:
+        np.testing.assert_allclose(
+            rs_refr.mg_refractive((m_air, m_inc), (1 - frac, frac)),
+            py_refr.mg_refractive((m_air, m_inc), (1 - frac, frac)),
+            rtol=1e-10,
+        )
+        np.testing.assert_allclose(
+            rs_refr.bruggeman_refractive((m_air, m_inc), (1 - frac, frac)),
+            py_refr.bruggeman_refractive((m_air, m_inc), (1 - frac, frac)),
+            rtol=1e-10,
+        )
+
+    # Three-component MG (air + ice + water).
+    np.testing.assert_allclose(
+        rs_refr.mg_refractive((m_air, m_ice, m_water), (0.5, 0.3, 0.2)),
+        py_refr.mg_refractive((m_air, m_ice, m_water), (0.5, 0.3, 0.2)),
+        rtol=1e-10,
+    )
+
+
 def test_orient_averaged_fixed_parity(PyScatterer):
     """Fixed-quadrature orientation averaging should match pytmatrix's."""
     from pytmatrix import orientation as py_orient

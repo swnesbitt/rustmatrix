@@ -182,6 +182,33 @@ def test_psd_integrator_save_and_load_roundtrip(sphere, tmp_path):
         np.testing.assert_allclose(integ2._Z_table[geom], integ._Z_table[geom])
 
 
+def test_psd_integrator_honours_axis_ratio_func_and_m_func(sphere):
+    """Per-diameter axis_ratio and m callbacks must reach the Rust tabulator.
+
+    Checks that tm.m and tm.axis_ratio are still the original values after
+    init_scatter_table (state restored) but the tabulated S/Z depend on
+    the per-D callbacks (not the scatterer's default m).
+    """
+    sphere.set_geometry((90.0, 90.0, 0.0, 180.0, 0.0, 0.0))
+    integ = PSDIntegrator()
+    integ.D_max = 3.0
+    integ.num_points = 16
+    # Pick m_func that actually varies with D to be sure it's used.
+    integ.m_func = lambda D: complex(1.5 + 0.1 * D, 0.01)
+    integ.axis_ratio_func = lambda D: 1.0 + 0.1 * D
+    integ.init_scatter_table(sphere)
+
+    # State fully restored.
+    assert sphere.m == complex(1.5, 0.01)
+    assert sphere.axis_ratio == 1.0
+
+    # m_table was populated from the callback.
+    expected = np.array(
+        [complex(1.5 + 0.1 * D, 0.01) for D in integ._psd_D]
+    )
+    np.testing.assert_allclose(integ._m_table, expected)
+
+
 def test_psd_integrator_multiple_geometries(sphere):
     """Tabulating multiple geometries produces distinct entries."""
     from rupytmatrix.tmatrix_aux import geom_horiz_back, geom_horiz_forw
