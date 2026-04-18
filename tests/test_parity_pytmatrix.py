@@ -84,3 +84,31 @@ def test_cylinder_parity(PyScatterer):
                      shape=RsScatterer.SHAPE_CYLINDER, m=m, ddelt=1e-4, ndgs=2)
     rs.set_geometry(geom)
     _compare(py, rs, s_tol=5e-3, z_tol=5e-3)
+
+
+def test_orient_averaged_fixed_parity(PyScatterer):
+    """Fixed-quadrature orientation averaging should match pytmatrix's."""
+    from pytmatrix import orientation as py_orient
+
+    from rupytmatrix import orientation as rs_orient
+
+    geom = (90.0, 90.0, 0.0, 180.0, 0.0, 0.0)
+    m = complex(1.5, 0.01)
+
+    py = PyScatterer(radius=1.0, wavelength=6.283185307, axis_ratio=2.0,
+                     m=m, ddelt=1e-4, ndgs=2)
+    py.set_geometry(geom)
+    py.or_pdf = py_orient.gaussian_pdf(std=20.0, mean=90.0)
+    py.orient = py_orient.orient_averaged_fixed
+    py.n_alpha = 4
+    py.n_beta = 8
+
+    rs = RsScatterer(radius=1.0, wavelength=6.283185307, axis_ratio=2.0,
+                     m=m, ddelt=1e-4, ndgs=2)
+    rs.set_geometry(geom)
+    rs.or_pdf = rs_orient.gaussian_pdf(std=20.0, mean=90.0)
+    rs.orient = rs_orient.orient_averaged_fixed
+    rs.n_alpha = 4
+    rs.n_beta = 8
+
+    _compare(py, rs, s_tol=5e-3, z_tol=5e-3)

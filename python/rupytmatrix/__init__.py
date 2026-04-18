@@ -21,14 +21,18 @@ from ._core import (  # noqa: F401
     mie_qext,
     mie_qsca,
 )
-from .scatterer import Scatterer
+from . import orientation, quadrature  # noqa: F401
+from .scatterer import Scatterer, TMatrix  # noqa: F401
 
 __version__ = "0.1.0"
 __all__ = [
     "Scatterer",
+    "TMatrix",
     "calctmat",
     "mie_qext",
     "mie_qsca",
+    "orientation",
+    "quadrature",
     "RADIUS_EQUAL_VOLUME",
     "RADIUS_EQUAL_AREA",
     "RADIUS_MAXIMUM",

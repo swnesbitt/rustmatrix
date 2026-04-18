@@ -1,20 +1,22 @@
 """Python-side `Scatterer` class.
 
 Mirrors the API of `pytmatrix.tmatrix.Scatterer` so downstream code can
-use this module as a drop-in replacement. Radar, PSD, and orientation-
-averaging helpers are left as thin pure-Python modules that call through
-to this class (matching pytmatrix's own architecture).
+use this module as a drop-in replacement. Orientation averaging is
+provided by :mod:`rupytmatrix.orientation` (pure Python, calls the Rust
+single-orientation evaluator in a loop).
 """
 
 from __future__ import annotations
 
 import warnings
 from dataclasses import dataclass, field
-from typing import Callable, Optional, Tuple
+from typing import Optional, Tuple
 
 import numpy as np
 
 from . import _core
+from . import orientation as _orientation
+from .quadrature import get_points_and_weights as _qpw
 
 
 @dataclass
@@ -54,12 +56,13 @@ class Scatterer:
     _handle: Optional[object] = field(default=None, repr=False)
     _tm_signature: Tuple = field(default_factory=tuple, repr=False)
     _scatter_signature: Tuple = field(default_factory=tuple, repr=False)
+    _orient_signature: Tuple = field(default_factory=tuple, repr=False)
     _S_single: Optional[np.ndarray] = field(default=None, repr=False)
     _Z_single: Optional[np.ndarray] = field(default=None, repr=False)
+    _S: Optional[np.ndarray] = field(default=None, repr=False)
+    _Z: Optional[np.ndarray] = field(default=None, repr=False)
 
     def __init__(self, **kwargs):
-        # Apply field defaults manually to avoid dataclass complexity with
-        # pytmatrix's "deprecated aliases" pattern. Start with defaults.
         defaults = {
             "radius": 1.0,
             "radius_type": _core.RADIUS_EQUAL_VOLUME,
@@ -77,6 +80,11 @@ class Scatterer:
             "phi": 180.0,
             "Kw_sqr": 0.93,
             "suppress_warning": False,
+            # Orientation averaging defaults (match pytmatrix).
+            "orient": _orientation.orient_single,
+            "or_pdf": _orientation.gaussian_pdf(),
+            "n_alpha": 5,
+            "n_beta": 10,
         }
         deprecated = {
             "axi": "radius",
@@ -84,6 +92,7 @@ class Scatterer:
             "eps": "axis_ratio",
             "rat": "radius_type",
             "np": "shape",
+            "scatter": "orient",
         }
         for key, new in deprecated.items():
             if key in kwargs:
@@ -101,8 +110,11 @@ class Scatterer:
         object.__setattr__(self, "_handle", None)
         object.__setattr__(self, "_tm_signature", ())
         object.__setattr__(self, "_scatter_signature", ())
+        object.__setattr__(self, "_orient_signature", ())
         object.__setattr__(self, "_S_single", None)
         object.__setattr__(self, "_Z_single", None)
+        object.__setattr__(self, "_S", None)
+        object.__setattr__(self, "_Z", None)
 
     # ---------- convenience helpers ----------
 
@@ -160,6 +172,18 @@ class Scatterer:
             ),
         )
 
+    def _init_orient(self):
+        """Build (beta_p, beta_w) quadrature against ``or_pdf`` if needed."""
+        if self.orient is _orientation.orient_averaged_fixed:
+            beta_p, beta_w = _qpw(self.or_pdf, 0, 180, self.n_beta)
+            object.__setattr__(self, "beta_p", beta_p)
+            object.__setattr__(self, "beta_w", beta_w)
+        object.__setattr__(
+            self,
+            "_orient_signature",
+            (self.orient, self.or_pdf, self.n_alpha, self.n_beta),
+        )
+
     def get_SZ_single(self, alpha=None, beta=None):
         if alpha is None:
             alpha = self.alpha
@@ -195,10 +219,23 @@ class Scatterer:
             object.__setattr__(self, "_scatter_signature", sig)
         return self._S_single, self._Z_single
 
+    def get_SZ_orient(self):
+        """S and Z using ``self.orient`` (orientation-averaging dispatcher)."""
+        orient_outdated = self._orient_signature != (
+            self.orient,
+            self.or_pdf,
+            self.n_alpha,
+            self.n_beta,
+        )
+        if orient_outdated:
+            self._init_orient()
+        S, Z = self.orient(self)
+        object.__setattr__(self, "_S", np.asarray(S))
+        object.__setattr__(self, "_Z", np.asarray(Z))
+        return self._S, self._Z
+
     def get_SZ(self):
-        # For now, single-orientation only. Orientation averaging can be
-        # added by running get_SZ_single in a loop (matching pytmatrix).
-        return self.get_SZ_single()
+        return self.get_SZ_orient()
 
     def get_S(self):
         return self.get_SZ()[0]

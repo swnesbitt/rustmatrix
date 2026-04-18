@@ -7,12 +7,9 @@ itself a Python wrapper around M. I. Mishchenko's Fortran T-matrix code —
 with the Fortran replaced by pure Rust behind a PyO3 extension module.
 Targets **Python 3.9–3.13** via ABI3.
 
-> **Status: alpha / work in progress.** The project scaffold, primitives,
-> and API surface are in place. The general-spheroid T-matrix assembly
-> is a direct Fortran-to-Rust translation that compiles and runs but has
-> **not yet been bit-parity verified** against the original pytmatrix.
-> The sphere (axis ratio = 1) case reduces to classical Mie theory and
-> is verified against closed-form expectations. See [Status](#status)
+> **Status: alpha.** The core T-matrix solver is numerically verified against
+> the original pytmatrix (Fortran backend) for spheres, prolate/oblate
+> spheroids, and finite cylinders. All 7 parity tests pass. See [Status](#status)
 > below for specifics.
 
 ## Why?
@@ -102,8 +99,18 @@ original pytmatrix Fortran backend.
 
 ## Status
 
-Fully implemented and unit-tested (`cargo test`, `pytest tests/test_mie.py`,
-`pytest tests/test_scatterer_api.py`):
+**Numerically verified** against pytmatrix (Fortran backend) for all supported
+shapes. All 7 parity tests pass at tolerances ≤ 5×10⁻³ for S and Z:
+
+| Shape | Test | Tolerance |
+|---|---|---|
+| Sphere (`axis_ratio=1`) — 3 cases | ✅ pass | 1×10⁻³ |
+| Prolate spheroid (`axis_ratio=0.5`) | ✅ pass | 5×10⁻³ |
+| Oblate spheroid (`axis_ratio=2.0`) | ✅ pass | 5×10⁻³ |
+| Spheroid (`axis_ratio=1.5`) | ✅ pass | 5×10⁻³ |
+| Finite cylinder | ✅ pass | 5×10⁻³ |
+
+Fully implemented and unit-tested (`cargo test --lib`, `pytest`):
 
 * Gauss-Legendre quadrature with endpoint / half-range options.
 * Spherical Bessel `j_n`, `y_n` (real argument, up-recurrence).
@@ -112,32 +119,23 @@ Fully implemented and unit-tested (`cargo test`, `pytest tests/test_mie.py`,
 * Wigner d-function helpers `VIG` / `VIGAMPL`.
 * Shape radii for spheroid, Chebyshev, cylinder, gen-Chebyshev.
 * Closed-form Mie scattering (sphere baseline).
-* Full PyO3 Python API: `calctmat`, `calcampl`, `Scatterer`.
-
-Implemented but **pending numerical verification** against pytmatrix:
-
-* `tmatrix::tmatr0` — `m = 0` block of T.
-* `tmatrix::tmatr` — `m > 0` blocks of T.
+* `tmatrix::tmatr0` — `m = 0` azimuthal block of T.
+* `tmatrix::tmatr` — `m > 0` azimuthal blocks of T.
 * `amplitude::ampl` — amplitude matrix rotation / summation.
-
-These are direct line-by-line Fortran → Rust translations. They compile
-and produce finite, well-typed output, but matching pytmatrix to the tight
-tolerances parity tests demand is likely to require one debugging pass
-over sign / index-convention issues (the Fortran uses 1-indexed arrays,
-negative powers of `i`, and several `COMMON` blocks that alias variables
-that a translation easily loses track of). The parity tests in
-`tests/test_parity_pytmatrix.py` for spheroids and cylinders are
-currently marked `xfail` for this reason; remove the marker as each
-shape is verified.
+* Full PyO3 Python API: `calctmat`, `calcampl`, `Scatterer`.
+* Orientation averaging: `orient_single` (default), `orient_averaged_fixed`
+  (Gauss quadrature in β, uniform sampling in α), and
+  `orient_averaged_adaptive` (scipy `dblquad`). Ported pure-Python from
+  pytmatrix and parity-verified against it.
+* `gaussian_pdf` / `uniform_pdf` orientation PDFs and the Gautschi-based
+  `get_points_and_weights` quadrature helper (used internally by
+  `orient_averaged_fixed`).
 
 Not yet implemented:
 
-* Orientation averaging (single orientation only — the
-  `orient_averaged_fixed` / `orient_averaged_adaptive` variants are absent).
 * Size distribution integration (`psd_integrator`).
 * Radar / PSD / refractive-index helper modules. These are pure Python in
-  pytmatrix and could be copied over verbatim once the core is parity-
-  verified (they don't touch Fortran).
+  pytmatrix and can be copied over verbatim; they don't touch the Fortran core.
 
 ## Running the tests
 
