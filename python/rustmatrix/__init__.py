@@ -35,6 +35,10 @@ radar
     Polarimetric radar observables (Z_dr, K_dp, ρ_hv, …).
 scatter
     Angular-integrated scattering helpers (σ_sca, σ_ext, ω, g, LDR).
+spectra
+    Doppler and polarimetric spectra — :class:`SpectralIntegrator` with
+    fall-speed presets, turbulence models (including Zeng 2023 particle
+    inertia), and beam broadening.
 refractive
     Refractive-index helpers (Maxwell-Garnett, Bruggeman, tabulated
     water/ice indices across S–W band).
@@ -85,10 +89,12 @@ from . import (  # noqa: F401
     radar,
     refractive,
     scatter,
+    spectra,
     tmatrix_aux,
 )
 from .hd_mix import HydroMix, MixtureComponent  # noqa: F401
 from .scatterer import Scatterer, TMatrix  # noqa: F401
+from .spectra import SpectralIntegrator, SpectralResult  # noqa: F401
 
 __version__ = "0.1.0"
 __all__ = [
@@ -96,6 +102,8 @@ __all__ = [
     "TMatrix",
     "HydroMix",
     "MixtureComponent",
+    "SpectralIntegrator",
+    "SpectralResult",
     "calctmat",
     "mie_qext",
     "mie_qsca",
@@ -106,6 +114,7 @@ __all__ = [
     "radar",
     "refractive",
     "scatter",
+    "spectra",
     "tmatrix_aux",
     "RADIUS_EQUAL_VOLUME",
     "RADIUS_EQUAL_AREA",
