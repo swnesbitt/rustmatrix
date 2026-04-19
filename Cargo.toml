@@ -1,6 +1,6 @@
 [package]
 name = "rustmatrix"
-version = "1.0.0-rc.1"
+version = "1.0.0"
 edition = "2021"
 authors = ["Stephen Nesbitt <snesbitt@illinois.edu>"]
 license = "MIT"
