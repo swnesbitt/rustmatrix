@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/icon.svg" alt="rustmatrix icon" width="160" height="160">
+  <img src="assets/logo.svg" alt="rustmatrix" width="560">
 </p>
 
 # rustmatrix

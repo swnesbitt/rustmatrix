@@ -81,8 +81,8 @@
     <rect x="48" y="176" width="12" height="38" fill="#6A7A95" stroke-width="2"/>
     <line x1="48" y1="190" x2="60" y2="190" stroke-width="1.2"/>
     <line x1="48" y1="202" x2="60" y2="202" stroke-width="1.2"/>
-    <!-- Dish (parabolic, tilted up-right toward the drop) -->
-    <g transform="translate(54 174) rotate(-35)">
+    <!-- Dish (parabolic, tilted up-left — turned the other way) -->
+    <g transform="translate(54 174) rotate(35)">
       <ellipse cx="0" cy="0" rx="22" ry="8" fill="url(#dish)" stroke-width="2.5"/>
       <ellipse cx="0" cy="-1" rx="18" ry="5" fill="none" stroke="#0A1020" stroke-width="1" opacity="0.35"/>
       <!-- Feed horn -->
@@ -99,23 +99,31 @@
   </g>
 
   <!-- ================= Raindrop (centre) ================= -->
-  <g>
-    <!-- Soft glow behind the drop -->
-    <ellipse cx="128" cy="134" rx="46" ry="58" fill="#9FD8FF" opacity="0.12"/>
-    <!-- Cartoon teardrop: point at top, bulb at bottom. -->
-    <path d="M 128 70
-             C 88 112 88 174 128 192
-             C 168 174 168 112 128 70 Z"
+  <!--
+    Beard-Chuang equilibrium shape for a ~4 mm equi-volume raindrop:
+    oblate with horizontal semi-axis > vertical semi-axis (ratio ≈ 0.78),
+    and a slightly flatter underside. Scaled to 67% of its natural size
+    (drop + embedded Rust gear together).
+  -->
+  <g transform="translate(128 128) scale(0.67) translate(-128 -128)">
+    <!-- Soft glow behind the drop (oblate) -->
+    <ellipse cx="128" cy="128" rx="62" ry="50" fill="#9FD8FF" opacity="0.12"/>
+    <!-- Oblate drop with flattened base. -->
+    <path d="M 128 85
+             C 160 85, 184 105, 184 128
+             C 184 152, 170 170, 128 170
+             C 86 170,  72 152,  72 128
+             C 72 105,  96  85, 128  85 Z"
           fill="url(#drop)" stroke="#0B3B74" stroke-width="3.5"
           stroke-linejoin="round"/>
-    <!-- Specular highlight -->
-    <path d="M 108 112 Q 102 130 108 150 Q 116 130 116 112 Z"
+    <!-- Specular highlight, upper-left of the oblate body. -->
+    <path d="M 96 112 Q 88 128 98 140 Q 108 128 106 112 Z"
           fill="#E3F4FF" opacity="0.55"/>
     <!-- Tiny sparkle -->
-    <circle cx="112" cy="104" r="2.4" fill="#FFFFFF" opacity="0.9"/>
+    <circle cx="102" cy="104" r="2.4" fill="#FFFFFF" opacity="0.9"/>
 
     <!-- ========== Rust gear logo, shaded into the drop ========== -->
-    <g transform="translate(128 148)" opacity="0.48">
+    <g transform="translate(128 132)" opacity="0.48">
       <g fill="#2A0A00" stroke="#2A0A00">
         <!-- Gear teeth (8-tooth simplified Rust cog). -->
         <g stroke-width="0">
@@ -142,18 +150,32 @@
     </g>
   </g>
 
-  <!-- Scattered wavelets bouncing off the drop — the T-matrix output. -->
-  <g fill="none" stroke="#FFD66B" stroke-linecap="round" stroke-width="1.8" opacity="0.6">
-    <path d="M 178 100 Q 192 110 198 122"/>
-    <path d="M 184 140 Q 200 150 204 164"/>
-    <path d="M 72 100 Q 60 90 52 82"/>
+  <!-- Fading drop-shaped waves — scattered radiation, echoing the drop outline. -->
+  <g fill="none" stroke="#9FD8FF" stroke-linejoin="round">
+    <path d="M 128 85 C 160 85, 184 105, 184 128 C 184 152, 170 170, 128 170 C 86 170, 72 152, 72 128 C 72 105, 96 85, 128 85 Z"
+          transform="translate(128 128) scale(0.88) translate(-128 -128)"
+          stroke-width="2.4" opacity="0.50"/>
+    <path d="M 128 85 C 160 85, 184 105, 184 128 C 184 152, 170 170, 128 170 C 86 170, 72 152, 72 128 C 72 105, 96 85, 128 85 Z"
+          transform="translate(128 128) scale(1.08) translate(-128 -128)"
+          stroke-width="1.9" opacity="0.28"/>
+    <path d="M 128 85 C 160 85, 184 105, 184 128 C 184 152, 170 170, 128 170 C 86 170, 72 152, 72 128 C 72 105, 96 85, 128 85 Z"
+          transform="translate(128 128) scale(1.28) translate(-128 -128)"
+          stroke-width="1.4" opacity="0.14"/>
   </g>
 
-  <!-- Matrix brackets in the corners — keeps the T-matrix identity. -->
-  <g fill="none" stroke="#E6EEF8" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M 54 36 H 34 V 70"/>
-    <path d="M 202 36 H 222 V 70"/>
-    <path d="M 54 220 H 34 V 186"/>
-    <path d="M 202 220 H 222 V 186"/>
+  <!-- Matrix brackets (Computer Modern style: thick vertical body + thin serifs). -->
+  <g stroke="#E6EEF8" fill="none" stroke-linecap="butt" stroke-linejoin="miter">
+    <!-- Top-left -->
+    <path d="M 34 34 V 72" stroke-width="8"/>
+    <path d="M 30 34 H 58" stroke-width="3.5"/>
+    <!-- Top-right -->
+    <path d="M 222 34 V 72" stroke-width="8"/>
+    <path d="M 198 34 H 226" stroke-width="3.5"/>
+    <!-- Bottom-left -->
+    <path d="M 34 184 V 222" stroke-width="8"/>
+    <path d="M 30 222 H 58" stroke-width="3.5"/>
+    <!-- Bottom-right -->
+    <path d="M 222 184 V 222" stroke-width="8"/>
+    <path d="M 198 222 H 226" stroke-width="3.5"/>
   </g>
 </svg>
