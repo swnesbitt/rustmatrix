@@ -15,11 +15,6 @@ If you have existing code that uses `pytmatrix.tmatrix.Scatterer`,
 `pytmatrix.refractive`, or `pytmatrix.tmatrix_aux`, you should be able to
 change the imports and keep going. The APIs are identical.
 
-> **Status: alpha.** The core solver is numerically verified against the
-> reference Fortran pytmatrix across spheres, spheroids, and finite cylinders
-> at tolerances ≤ 5×10⁻³ (see [Status](#status)). Parallelised PSD paths
-> run 4–400× faster on the same hardware.
-
 ---
 
 ## Background: the T-matrix method in 60 seconds
