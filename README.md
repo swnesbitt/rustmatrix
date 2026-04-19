@@ -99,6 +99,68 @@ Shape constants follow pytmatrix's conventions (`SHAPE_SPHEROID = -1`,
 
 ---
 
+## Added functionality
+
+rustmatrix is a drop-in replacement for the numerical core of pytmatrix,
+but the port isn't just a transliteration. Two things are genuinely new:
+
+### 1. Rust speedups
+
+The inner loops that dominate most radar-forward-model runs — orientation
+averaging and PSD integration — run in Rust with the GIL released and
+parallelise across cores via `rayon`. Against the Fortran pytmatrix
+backend on the same machine:
+
+* **~6×** on orientation averaging (fixed quadrature, 32 orientations).
+* **~4–10×** on PSD tabulation (32–64 diameter points; combined with
+  orient averaging, ~10×).
+* **~260–300×** on `angular_integration` (σ_sca / σ_ext / g tables).
+* **~430×** on `orient_averaged_adaptive` — the worst pytmatrix case,
+  where scipy's `dblquad` callbacks cross the Python/Fortran boundary
+  hundreds of times per diameter.
+
+Full benchmark table in the [Performance](#performance) section; rerun
+with `python benches/bench_vs_pytmatrix.py`.
+
+### 2. Hydrometeor mixtures (`HydroMix`)
+
+Radar volumes rarely contain a single species. The new `rustmatrix.hd_mix`
+module combines multiple `(Scatterer, PSD)` pairs — each with its own
+refractive index, axis ratio, shape, and orientation PDF — into one
+Scatterer-shaped object that feeds straight into the existing
+`rustmatrix.radar` helpers:
+
+```python
+from rustmatrix import HydroMix, MixtureComponent, Scatterer, radar, psd
+from rustmatrix.tmatrix_aux import geom_horiz_back, geom_horiz_forw
+
+# rain_scatterer and ice_scatterer are Scatterers whose PSDIntegrators
+# have already been init_scatter_table()'d at both geometries.
+rain_psd = psd.GammaPSD(D0=1.5, Nw=8e3, mu=4, D_max=6.0)
+ice_psd  = psd.ExponentialPSD(N0=5e3, Lambda=2.0, D_max=8.0)
+
+mix = HydroMix([
+    MixtureComponent(rain_scatterer, rain_psd, "rain"),
+    MixtureComponent(ice_scatterer,  ice_psd,  "ice"),
+])
+
+mix.set_geometry(geom_horiz_back)
+Zh, Zdr, rho = radar.refl(mix), radar.Zdr(mix), radar.rho_hv(mix)
+mix.set_geometry(geom_horiz_forw)
+Kdp, Ai      = radar.Kdp(mix), radar.Ai(mix)
+```
+
+The physics: both the amplitude matrix *S* and the phase matrix *Z* are
+linear functionals of *N(D)*, so summing *S* and *Z* across species is
+the physically correct incoherent-mixture recipe — even for the
+non-linear observables (*Z*<sub>dr</sub>, *ρ*<sub>hv</sub>,
+*δ*<sub>hv</sub>), which fall out automatically from the combined
+matrix. Mixing fractions live directly in each species' N(D); there is
+no separate weight scalar. Full end-to-end example in
+[`examples/06_hd_mix.py`](examples/06_hd_mix.py).
+
+---
+
 ## Guided tour
 
 The `examples/` directory contains a numbered tutorial set. Each tutorial
@@ -123,6 +185,11 @@ ships as both a runnable `.py` script and a matching `.ipynb` notebook
 5. **`05_radar_band_sweep.py`** — same particle across S/C/X/Ku/Ka/W. Shows
    how *Z*<sub>dr</sub> and *K*<sub>dp</sub> vary with wavelength and is the
    natural jumping-off point for multi-frequency retrieval papers.
+6. **`06_hd_mix.py`** — a rain + oriented-ice mixture at C-band using the
+   new `HydroMix`. Builds one `PSDIntegrator` per species, assembles the
+   mixture, and reads *Z*<sub>h</sub>, *Z*<sub>dr</sub>, *K*<sub>dp</sub>,
+   *A*<sub>i</sub>, and *ρ*<sub>hv</sub> for rain-only, ice-only, and the
+   combined case.
 
 Each script completes in under about 30 s on a laptop so the reader can
 iterate. Every tutorial's module docstring notes which `pytmatrix` section
@@ -137,6 +204,7 @@ it mirrors.
 | `rustmatrix` | `pytmatrix.tmatrix` | Core solver + `Scatterer` class | `Scatterer`, `calctmat`, `mie_qsca`, `mie_qext`, `SHAPE_*`, `RADIUS_*` |
 | `orientation` | `pytmatrix.orientation` | Orientation-averaging rules | `orient_single`, `orient_averaged_fixed`, `orient_averaged_adaptive`, `gaussian_pdf`, `uniform_pdf` |
 | `psd` | `pytmatrix.psd` | Particle-size-distribution integration | `PSDIntegrator`, `GammaPSD`, `ExponentialPSD`, `UnnormalizedGammaPSD`, `BinnedPSD` |
+| `hd_mix` | *(new — no pytmatrix equivalent)* | Multi-species hydrometeor mixtures. Scatterer-shaped so `radar.*` helpers work unchanged. | `HydroMix`, `MixtureComponent` |
 | `radar` | `pytmatrix.radar` | Polarimetric radar observables | `radar_xsect`, `refl` (`Zi`), `Zdr`, `delta_hv`, `rho_hv`, `Kdp`, `Ai` |
 | `scatter` | `pytmatrix.scatter` | Angular-integrated scattering helpers | `sca_intensity`, `sca_xsect`, `ext_xsect`, `ssa`, `asym`, `ldr` |
 | `refractive` | `pytmatrix.refractive` | Refractive-index helpers | `mg_refractive`, `bruggeman_refractive`, `m_w_0C/10C/20C`, `mi`, `ice_refractive` |

@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "rustmatrix"
-version = "1.0.1"
+version = "1.1.0"
 description = "Rust-backed T-matrix scattering for nonspherical particles (port of pytmatrix)"
 readme = "README.md"
 license = { text = "MIT" }

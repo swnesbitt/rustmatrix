@@ -24,6 +24,9 @@ RADIUS_EQUAL_VOLUME, RADIUS_EQUAL_AREA, RADIUS_MAXIMUM
 
 Submodules
 ----------
+hd_mix
+    :class:`HydroMix` and :class:`MixtureComponent` for combining
+    multiple hydrometeor species into a single Scatterer-shaped object.
 orientation
     Orientation-averaging strategies and PDFs.
 psd
@@ -75,6 +78,7 @@ from ._core import (  # noqa: F401
     mie_qsca,
 )
 from . import (  # noqa: F401
+    hd_mix,
     orientation,
     psd,
     quadrature,
@@ -83,15 +87,19 @@ from . import (  # noqa: F401
     scatter,
     tmatrix_aux,
 )
+from .hd_mix import HydroMix, MixtureComponent  # noqa: F401
 from .scatterer import Scatterer, TMatrix  # noqa: F401
 
 __version__ = "0.1.0"
 __all__ = [
     "Scatterer",
     "TMatrix",
+    "HydroMix",
+    "MixtureComponent",
     "calctmat",
     "mie_qext",
     "mie_qsca",
+    "hd_mix",
     "orientation",
     "psd",
     "quadrature",
