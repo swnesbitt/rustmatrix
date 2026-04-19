@@ -194,7 +194,7 @@ def test_radar_observables_forward_parity(PyScatterer):
 
 def test_refractive_mg_bruggeman_parity():
     """Maxwell-Garnett and Bruggeman EMAs are numeric ports — should match bit-for-bit."""
-    from pytmatrix import refractive as py_refr
+    py_refr = pytest.importorskip("pytmatrix.refractive")
 
     from rupytmatrix import refractive as rs_refr
 
