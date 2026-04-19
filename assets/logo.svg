@@ -24,7 +24,8 @@
 
 <!-- ================= Icon (embedded 256x256 tile on the left) ================= -->
   <g>
-    <rect width="256" height="256" rx="44" ry="44" fill="url(#sky)"/>
+    <rect x="3" y="3" width="250" height="250" rx="41" ry="41"
+          fill="url(#sky)" stroke="#ffffff" stroke-width="6"/>
 
     <g stroke="#2C3E6B" stroke-width="1" opacity="0.22">
       <path d="M 48 80  H 208"/>

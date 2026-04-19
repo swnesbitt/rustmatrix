@@ -25,8 +25,9 @@
     </linearGradient>
   </defs>
 
-  <!-- Rounded-square background. -->
-  <rect width="256" height="256" rx="44" ry="44" fill="url(#sky)"/>
+  <!-- Rounded-square background with white halo, matching the wordmark. -->
+  <rect x="3" y="3" width="250" height="250" rx="41" ry="41"
+        fill="url(#sky)" stroke="#ffffff" stroke-width="6"/>
 
   <!-- Gauss-Legendre lattice: faint grid, kept from the original. -->
   <g stroke="#2C3E6B" stroke-width="1" opacity="0.22">
