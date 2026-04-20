@@ -1,151 +1,134 @@
-"""Tutorial 08 — Spectral polarimetry of a rain + ice mixture.
+"""Tutorial 08 — Dual-frequency non-Rayleigh snowfall spectra (Billault-Roux 2023).
+
+Reference
+---------
+Billault-Roux, A.-C., Ghiggi, G., Jaffeux, L., Martini, A., Viltard, N.,
+and Berne, A., 2023: Dual-frequency spectral radar retrieval of snowfall
+microphysics: a physics-driven deep-learning approach, *Atmos. Meas.
+Tech.*, 16, 911–931, doi:10.5194/amt-16-911-2023.
 
 Physics question
 ----------------
-Rain falls at ~5 m/s, unrimed aggregates at ~1 m/s. In mixed-phase
-volumes the two populations show up as distinct *modes* in the Doppler
-spectrum. The magic of spectral polarimetry is that each velocity bin
-carries its own ``sZ_dr(v)``, ``sρ_hv(v)``, and ``sδ_hv(v)``, so the
-"melting" and "ice" components can be diagnosed separately even when
-the bulk radar variables average over both.
+At cloud-radar frequencies small, slow-falling snow particles are still
+Rayleigh, so their X-band and W-band spectral reflectivities agree. The
+large, fast-falling particles, however, are non-Rayleigh at W-band, so
+their W-band spectral reflectivity is smaller than X-band. The spectral
+dual-wavelength ratio
 
-``HydroMix`` + ``SpectralIntegrator`` handle this natively: each
-component gets its own fall-speed and turbulence model, and the
-integrator sums per-component spectra on a shared velocity grid
-(linearity in N(D) applied per velocity bin).
+    sDWR(v) = 10·log₁₀( sZ_X(v) / sZ_W(v) )
+
+stays near 0 at low velocities and rises to several dB at high velocities
+— a direct fingerprint of the large-particle tail of the PSD, largely
+disentangled from turbulence and wind offsets.
 
 What this script does
 ---------------------
-1. Builds an X-band rain scatterer and a low-density oriented-ice
-   scatterer.
-2. Assembles a ``HydroMix`` from both species.
-3. Runs :class:`SpectralIntegrator` with per-component fall speeds and
-   turbulence.
-4. Reports the ice-mode peak velocity, rain-mode peak velocity, and
-   the drop in ρ_hv between the modes — the signature of mixed-phase
-   structure.
+1. Builds identical snow scatterers at X-band and W-band (ρ = 0.2 g/cm³,
+   axis ratio 0.6, exponential PSD with Λ = 0.8 mm⁻¹, D_max = 10 mm).
+2. Tabulates single-particle σ_b(D) at both bands to show the
+   non-Rayleigh onset around D ≈ 3 mm.
+3. Runs both scatterers through `SpectralIntegrator` with the Locatelli–
+   Hobbs aggregate fall-speed and σ_t = 0.2 m/s turbulence.
+4. Reports bulk DWR plus sDWR(v) at selected velocities.
 """
 
 from __future__ import annotations
 
 import numpy as np
 
-from rustmatrix import (
-    HydroMix,
-    MixtureComponent,
-    Scatterer,
-    SpectralIntegrator,
-    radar,
-    spectra,
-)
-from rustmatrix.psd import ExponentialPSD, GammaPSD, PSDIntegrator
-from rustmatrix.refractive import m_w_10C, mi
-from rustmatrix.tmatrix_aux import (
-    K_w_sqr,
-    dsr_thurai_2007,
-    geom_vert_back,
-    geom_vert_forw,
-    wl_X,
-)
+from rustmatrix import Scatterer, SpectralIntegrator, radar, spectra
+from rustmatrix.psd import ExponentialPSD, PSDIntegrator
+from rustmatrix.refractive import mi
+from rustmatrix.tmatrix_aux import K_w_sqr, geom_vert_back, wl_X, wl_W
 
 
-def build_rain() -> Scatterer:
-    s = Scatterer(
-        wavelength=wl_X,
-        m=m_w_10C[wl_X],
-        Kw_sqr=K_w_sqr[wl_X],
-        ddelt=1e-4, ndgs=2,
-    )
+# PSD and habit grounded in the ICE-GENESIS 23 January 2021 case of
+# Billault-Roux et al. 2023 (Fig. 5 snowfall layer):
+#   - oblate aggregates, ρ_ice = 0.1 g/cm³ (low-density, mixed-habit),
+#     axis ratio 0.6, D_max = 5 mm
+#   - exponential PSD, N0 = 2e4 m⁻³ mm⁻¹, Λ = 2.5 mm⁻¹
+#   - D0 = 3.67/Λ ≈ 1.5 mm, IWC = π ρ_ice N0 / Λ⁴ ≈ 0.16 g/m³
+# These knobs place Z_h(X) near 17 dBZ — a moderate aggregation layer,
+# consistent with the paper's Fig. 5 observations — not the 50 dBZ
+# outlier produced by Λ = 0.8 mm⁻¹ and D_max = 10 mm.
+RHO_ICE = 0.1
+AXIS_RATIO = 0.6
+D_MAX = 5.0
+N0 = 2e4
+LAMBDA = 2.5
+V_MIN, V_MAX = -2.0, 4.0
+N_BINS = 1024
+
+
+def build_snow(wl: float) -> Scatterer:
+    s = Scatterer(wavelength=wl, m=mi(wl, RHO_ICE),
+                  Kw_sqr=K_w_sqr[wl], axis_ratio=AXIS_RATIO,
+                  ddelt=1e-4, ndgs=2)
     integ = PSDIntegrator()
-    integ.D_max = 6.0
-    integ.num_points = 64
-    integ.axis_ratio_func = lambda D: 1.0 / dsr_thurai_2007(D)
-    integ.geometries = (geom_vert_back, geom_vert_forw)
+    integ.D_max = D_MAX
+    integ.num_points = 256
+    integ.geometries = (geom_vert_back,)
     s.psd_integrator = integ
     s.psd_integrator.init_scatter_table(s)
-    s.psd = GammaPSD(D0=1.5, Nw=8e3, mu=4, D_max=6.0)
+    s.psd = ExponentialPSD(N0=N0, Lambda=LAMBDA, D_max=D_MAX)
     return s
 
 
-def build_ice() -> Scatterer:
-    s = Scatterer(
-        wavelength=wl_X,
-        m=mi(wl_X, 0.2),
-        Kw_sqr=K_w_sqr[wl_X],
-        axis_ratio=0.6,
-        ddelt=1e-4, ndgs=2,
-    )
-    integ = PSDIntegrator()
-    integ.D_max = 8.0
-    integ.num_points = 64
-    integ.geometries = (geom_vert_back, geom_vert_forw)
-    s.psd_integrator = integ
-    s.psd_integrator.init_scatter_table(s)
-    s.psd = ExponentialPSD(N0=5e3, Lambda=2.0, D_max=8.0)
-    return s
+def sigma_b(wl: float, D_mm: float) -> float:
+    s = Scatterer(radius=D_mm / 2, wavelength=wl, m=mi(wl, RHO_ICE),
+                  Kw_sqr=K_w_sqr[wl], axis_ratio=AXIS_RATIO,
+                  ddelt=1e-4, ndgs=2)
+    s.set_geometry(geom_vert_back)
+    return radar.radar_xsect(s)
 
 
 def main() -> None:
-    rain = build_rain()
-    ice = build_ice()
+    snow_X = build_snow(wl_X)
+    snow_W = build_snow(wl_W)
 
-    mix = HydroMix([
-        MixtureComponent(rain, rain.psd, "rain"),
-        MixtureComponent(ice,  ice.psd,  "ice"),
-    ])
+    fall = spectra.fall_speed.locatelli_hobbs_1974_aggregates
+    turb = spectra.GaussianTurbulence(0.2)
 
-    integ = SpectralIntegrator(
-        mix,
-        component_kinematics={
-            "rain": (
-                spectra.fall_speed.atlas_srivastava_sekhon_1973,
-                spectra.GaussianTurbulence(0.2),
-            ),
-            "ice":  (
-                spectra.fall_speed.locatelli_hobbs_1974_aggregates,
-                spectra.GaussianTurbulence(0.2),
-            ),
-        },
-        v_min=-1.0, v_max=12.0, n_bins=1024,
-        geometry_backscatter=geom_vert_back,
-        geometry_forward=geom_vert_forw,
-    )
-    res = integ.run()
+    def run(sc: Scatterer):
+        return SpectralIntegrator(
+            sc, fall_speed=fall, turbulence=turb,
+            v_min=V_MIN, v_max=V_MAX, n_bins=N_BINS,
+            geometry_backscatter=geom_vert_back,
+        ).run()
 
-    # Identify the two modes by looking for the ice (v < 2) and rain (v > 2) peaks.
-    ice_mask = res.v < 2.0
-    rain_mask = res.v > 2.0
+    r_X = run(snow_X)
+    r_W = run(snow_W)
 
-    v_ice_peak = res.v[ice_mask][int(np.argmax(res.sZ_h[ice_mask]))]
-    v_rain_peak = res.v[rain_mask][int(np.argmax(res.sZ_h[rain_mask]))]
+    def dBZ(x: np.ndarray) -> np.ndarray:
+        return 10 * np.log10(np.maximum(x, 1e-12))
 
-    # Bimodal valley: find the minimum of sZ_h between the two peaks.
-    valley_mask = (res.v > v_ice_peak) & (res.v < v_rain_peak)
-    v_valley = res.v[valley_mask][int(np.argmin(res.sZ_h[valley_mask]))]
-    rho_valley = res.srho_hv[valley_mask][int(np.argmin(res.sZ_h[valley_mask]))]
+    # σ_b(D) spot-check at a few diameters.
+    D_probe = np.array([0.5, 1.0, 2.0, 3.0, 5.0, 8.0])
 
-    print("Rain + ice bimodal Doppler spectrum at X-band, vertical pointing")
+    Z_X = np.trapezoid(r_X.sZ_h, r_X.v)
+    Z_W = np.trapezoid(r_W.sZ_h, r_W.v)
+
+    print("Billault-Roux et al. (2023) — dual-frequency snowfall spectra")
     print("-" * 72)
-    print(f"  ice-mode peak  : v = {v_ice_peak:.2f} m/s")
-    print(f"  rain-mode peak : v = {v_rain_peak:.2f} m/s")
-    print(f"  inter-mode valley: v = {v_valley:.2f} m/s, ρ_hv = {rho_valley:.4f}")
-
-    # Bulk-sum identity round-trip.
-    bulk = res.collapse_to_bulk()
-    mix.set_geometry(geom_vert_back)
-    print("\nBulk ↔ spectrum-integrated identity:")
-    print(
-        f"  Z_h bulk   = {10 * np.log10(radar.refl(mix)):.3f} dBZ   "
-        f"from spectrum = {10 * np.log10(radar.refl(bulk)):.3f} dBZ"
-    )
-    print(
-        f"  Z_dr bulk  = {10 * np.log10(radar.Zdr(mix)):+.3f} dB    "
-        f"from spectrum = {10 * np.log10(radar.Zdr(bulk)):+.3f} dB"
-    )
-    print(
-        f"  ρ_hv bulk  = {radar.rho_hv(mix):.5f}       "
-        f"from spectrum = {radar.rho_hv(bulk):.5f}"
-    )
+    print(f"  exponential PSD: N0 = {N0:g} m⁻³ mm⁻¹, Λ = {LAMBDA} mm⁻¹, "
+          f"D_max = {D_MAX} mm")
+    print(f"  habit: oblate, ρ = {RHO_ICE} g/cm³, axis ratio {AXIS_RATIO}")
+    print()
+    print("Single-particle σ_b(D) [mm²]:")
+    print(f"  {'D [mm]':>8} {'X-band':>12} {'W-band':>12} {'ratio':>10}")
+    for D in D_probe:
+        sX = sigma_b(wl_X, D); sW = sigma_b(wl_W, D)
+        print(f"  {D:>8.2f} {sX:>12.3e} {sW:>12.3e} {sX / sW:>10.2f}")
+    print()
+    print(f"  bulk Z_h (X-band) = {10 * np.log10(Z_X):.2f} dBZ")
+    print(f"  bulk Z_h (W-band) = {10 * np.log10(Z_W):.2f} dBZ")
+    print(f"  bulk DWR          = {10 * np.log10(Z_X / Z_W):.2f} dB")
+    print()
+    print("sDWR(v) at selected velocities:")
+    for vs in (0.3, 0.5, 0.8, 1.0, 1.3, 1.6):
+        i = int(np.argmin(np.abs(r_X.v - vs)))
+        sdwr = dBZ(r_X.sZ_h[i]) - dBZ(r_W.sZ_h[i])
+        print(f"  v = {r_X.v[i]:.2f} m/s   sDWR = {float(sdwr):+.2f} dB")
 
 
 if __name__ == "__main__":

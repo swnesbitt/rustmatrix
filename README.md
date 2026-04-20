@@ -220,8 +220,8 @@ What ships out of the box:
   `rustmatrix.radar` helpers, so the spectral and bulk codepaths agree
   to numerical tolerance for every observable.
 
-Full walkthroughs in [`examples/07_doppler_spectrum_rain.py`](examples/07_doppler_spectrum_rain.py)
-and [`examples/08_spectral_polarimetry_rain_ice.py`](examples/08_spectral_polarimetry_rain_ice.py).
+Worked examples that exercise this machinery against published results
+ship as tutorials 07–11 — see the *Guided tour* below.
 
 ---
 
@@ -254,15 +254,20 @@ ships as both a runnable `.py` script and a matching `.ipynb` notebook
    mixture, and reads *Z*<sub>h</sub>, *Z*<sub>dr</sub>, *K*<sub>dp</sub>,
    *A*<sub>i</sub>, and *ρ*<sub>hv</sub> for rain-only, ice-only, and the
    combined case.
-7. **`07_doppler_spectrum_rain.py`** — Doppler + polarimetric spectra of a
-   rain PSD at X-band, vertical pointing. Steps through the four knobs
-   that shape the spectrum (no turbulence, Gaussian turbulence, Zeng 2023
-   inertial turbulence, beam broadening) and confirms that the integrated
-   spectrum reproduces the bulk `radar.*` observables.
-8. **`08_spectral_polarimetry_rain_ice.py`** — a rain + low-density ice
-   `HydroMix` at X-band, vertical pointing. Demonstrates the bimodal
-   Doppler spectrum, locates the ice and rain peaks, reads *ρ*<sub>hv</sub>
-   at the inter-mode valley, and round-trips through `collapse_to_bulk`.
+7. **`07_doppler_spectrum_rain.py`** — reproduces
+   [Kollias, Albrecht, Marks 2002](https://doi.org/10.1029/2001JD002033):
+   the 94-GHz raindrop σ<sub>b</sub>(*D*) Mie oscillations map into the
+   Doppler spectrum so that the *first Mie minimum* (≈5.9 m/s in still air)
+   serves as a DSD-independent fiducial for retrieving mean vertical air
+   motion. Also illustrates the delta-binning artifact that can masquerade
+   as physics when the PSD is sampled too sparsely.
+8. **`08_spectral_polarimetry_rain_ice.py`** — reproduces the
+   dual-frequency non-Rayleigh snowfall signature from
+   [Billault-Roux et al. 2023, *AMT*](https://doi.org/10.5194/amt-16-911-2023):
+   identical snow scatterer, PSD, fall-speed, and turbulence run through
+   `SpectralIntegrator` at X-band and W-band, yielding sDWR(*v*) = 10·log<sub>10</sub>(sZ<sub>X</sub>/sZ<sub>W</sub>)
+   that stays near 0 dB at low velocities and rises to several dB at high
+   velocities — the large-particle fingerprint the paper exploits.
 9. **`09_zhu_2023_particle_inertia.py`** — reproduces the W-band,
    exponential-warm-rain configuration of
    [Zhu, Kollias, Yang 2023](https://zenodo.org/records/7897981) and
@@ -270,10 +275,26 @@ ships as both a runnable `.py` script and a matching `.ipynb` notebook
    `InertialZeng2023` kernel. Large drops under-respond to small-scale
    eddies, so the Doppler spectrum narrows on its fast-falling tail — the
    paper's central finding.
+10. **`10_slw_vs_snow.py`** — supercooled liquid water and snow as
+    independent `rustmatrix` scatterers, combined in a `HydroMix` to
+    produce the bimodal W-band Doppler spectrum that motivates the
+    mixed-phase analysis in
+    [Billault-Roux et al. 2023, *ACP*](https://doi.org/10.5194/acp-23-10207-2023).
+    Highlights the 40+ dB Z<sub>h</sub> gap between SLW droplets and snow
+    aggregates and the velocity separation of the two modes.
+11. **`11_honeyager_hydrometeor_classes.py`** — following the T-matrix-as-DDA-proxy
+    framing of
+    [Honeyager 2013](https://fsu.digital.flvc.org/islandora/object/fsu:207427)
+    (MS thesis, Florida State University), parameterises four representative
+    hydrometeor classes — rain, low-density aggregate, graupel, high-density
+    ice — by (ρ<sub>eff</sub>, axis ratio) and walks through single-particle
+    σ<sub>b</sub>(*D*), DWR(*D*), bulk DWR vs. *D*<sub>0</sub>, and the
+    spectral DWR(*v*) that tells an aggregate PSD apart from a graupel PSD
+    even when their bulk Z<sub>h</sub> values overlap.
 
 Each script completes in under about 30 s on a laptop so the reader can
 iterate. Every tutorial's module docstring notes which `pytmatrix` section
-it mirrors (tutorials 6–9 cover functionality new to rustmatrix).
+it mirrors (tutorials 6–11 cover functionality new to rustmatrix).
 
 ---
 
