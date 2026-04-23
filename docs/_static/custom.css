@@ -1,0 +1,13 @@
+/* Minor pydata-sphinx-theme tweaks for rustmatrix.
+ * Keep this file small — heavy theming belongs in a dedicated theme.
+ */
+
+/* Tighten the navbar logo so the wordmark sits flush. */
+.navbar-brand img {
+    max-height: 2.2rem;
+}
+
+/* Make code blocks a touch denser. */
+div.highlight pre {
+    line-height: 1.35;
+}

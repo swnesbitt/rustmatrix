@@ -44,6 +44,20 @@ dev = [
     "maturin>=1.5",
     "ruff",
 ]
+docs = [
+    "sphinx>=7,<9",
+    "myst-parser>=3",
+    "myst-nb>=1.1",
+    "sphinx-autodoc-typehints",
+    "sphinx-design",
+    "sphinx-copybutton",
+    "pydata-sphinx-theme",
+    "sphinxcontrib-bibtex",
+    "ipywidgets",
+    "jupyter",
+    "linkify-it-py",
+    "matplotlib",
+]
 # NOTE: pytmatrix (the original Fortran-backed package used for parity
 # testing) is intentionally NOT listed as an extra. It needs gfortran
 # and ships a legacy setup.py, which causes uv's universal resolver
