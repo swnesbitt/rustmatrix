@@ -123,6 +123,18 @@ tutorials/index
 
 ```{toctree}
 :hidden:
+:caption: Background
+
+background/tmatrix
+background/polarimetry
+background/psd
+background/spectra
+background/beam
+conventions
+```
+
+```{toctree}
+:hidden:
 :caption: Reference
 
 api/index
