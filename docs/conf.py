@@ -19,7 +19,7 @@ from importlib import metadata as _metadata
 # -- Project information -----------------------------------------------------
 
 project = "rustmatrix"
-author = "Stephen Nesbitt"
+author = "Steve Nesbitt"
 copyright = f"{datetime.now().year}, {author}"
 
 try:

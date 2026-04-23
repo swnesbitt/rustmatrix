@@ -66,6 +66,46 @@ Every public Python symbol, generated from the source docstrings. Rust crate on 
 * **More physics.** Hydrometeor mixtures (`HydroMix`), Doppler + polarimetric spectra (`SpectralIntegrator`), and pattern × scene integration (`spectra.beam`) for non-uniform scenes — all on top of the same T-matrix solver.
 * **Drop-in.** API mirrors pytmatrix wherever the underlying physics matches, so existing scripts port over without code changes.
 
+## About
+
+rustmatrix is developed by [Steve Nesbitt](https://publish.illinois.edu/swnesbitt),
+Professor in the Department of
+[Climate, Meteorology & Atmospheric Sciences (CLIMAS)](https://climas.illinois.edu/)
+at the University of Illinois Urbana-Champaign. It grows out of
+instruction material for *ATMS 410 — Radar Meteorology* and accompanies
+the textbook *[Radar Meteorology: A First Course](https://onlinelibrary.wiley.com/doi/book/10.1002/9781118432662)*
+(Rauber & Nesbitt, 2018, Wiley).
+
+::::{grid} 1 2 2 2
+:gutter: 3
+
+:::{grid-item-card}
+:link: https://onlinelibrary.wiley.com/doi/book/10.1002/9781118432662
+:text-align: center
+
+```{image} _static/book-cover.png
+:alt: Radar Meteorology: A First Course
+:width: 120px
+```
+
+**Radar Meteorology: A First Course**
+Rauber & Nesbitt, Wiley (2018)
+:::
+
+:::{grid-item-card}
+:link: https://climas.illinois.edu/
+:text-align: center
+
+```{image} _static/climas-icon.png
+:alt: CLIMAS at Illinois
+:width: 120px
+```
+
+**CLIMAS** — Climate, Meteorology & Atmospheric Sciences at Illinois
+:::
+
+::::
+
 ```{toctree}
 :hidden:
 :caption: Get started
