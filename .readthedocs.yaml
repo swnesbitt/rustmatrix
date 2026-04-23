@@ -11,6 +11,7 @@ build:
   jobs:
     post_install:
       - pip install -e ".[docs]"
+      - pip install "maturin>=1.5,<2.0"
       - maturin develop --release
 
 sphinx:
