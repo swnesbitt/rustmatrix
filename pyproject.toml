@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "rustmatrix"
-version = "2.1.0"
+version = "2.1.1"
 description = "Rust-backed T-matrix scattering for nonspherical particles (port of pytmatrix)"
 readme = "README.md"
 license = { text = "MIT" }
@@ -85,7 +85,7 @@ Issues = "https://github.com/swnesbitt/rustmatrix/issues"
 # lives under `python/rustmatrix/` alongside pure-Python modules.
 python-source = "python"
 module-name = "rustmatrix._core"
-features = ["pyo3/extension-module"]
+features = ["extension-module"]
 # Ensure abi3 so a single wheel works across Python versions.
 strip = true
 

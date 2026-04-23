@@ -1,6 +1,6 @@
 [package]
 name = "rustmatrix"
-version = "2.1.0"
+version = "2.1.1"
 edition = "2021"
 authors = ["Stephen Nesbitt <snesbitt@illinois.edu>"]
 license = "MIT"
@@ -25,7 +25,14 @@ rayon = "1.10"
 
 [dependencies.pyo3]
 version = "0.22"
-features = ["extension-module", "abi3-py38", "num-complex"]
+# `extension-module` is deliberately NOT in default features: it tells
+# pyo3 to skip linking libpython, which breaks `cargo publish` and
+# docs.rs. Enable it via the `extension-module` feature below — the
+# maturin build in pyproject.toml does exactly that.
+features = ["abi3-py38", "num-complex"]
+
+[features]
+extension-module = ["pyo3/extension-module"]
 
 [dev-dependencies]
 approx = "0.5"
