@@ -3,6 +3,7 @@
 </p>
 
 <p align="center">
+  <a href="https://pypi.org/project/rustmatrix/"><img src="https://img.shields.io/pypi/v/rustmatrix.svg" alt="PyPI"></a>
   <a href="https://crates.io/crates/rustmatrix"><img src="https://img.shields.io/crates/v/rustmatrix.svg" alt="crates.io"></a>
   <a href="https://docs.rs/rustmatrix"><img src="https://img.shields.io/docsrs/rustmatrix" alt="docs.rs"></a>
   <a href="https://rustmatrix.readthedocs.io"><img src="https://img.shields.io/badge/docs-rustmatrix.readthedocs.io-blue.svg" alt="docs"></a>
@@ -35,14 +36,13 @@ crate directly from Rust without the Python wrapper.
 ## Install
 
 ```bash
-pip install maturin
-maturin develop --release      # from a checkout; builds the Rust extension
+pip install rustmatrix
 ```
 
-Requires a Rust toolchain (`rustup default stable`, 1.75+) and
-Python 3.9+. Pre-built wheels are planned for a future release;
-see [the install guide](https://rustmatrix.readthedocs.io/en/latest/install.html)
-for per-OS instructions.
+Pre-built ABI3 wheels for CPython 3.8+ ship for macOS (arm64, x86_64),
+Linux (manylinux x86_64, aarch64), and Windows x64. For source builds
+or dev installs, see
+[the install guide](https://rustmatrix.readthedocs.io/en/latest/install.html).
 
 ## Quickstart
 

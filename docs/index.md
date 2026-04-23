@@ -1,5 +1,9 @@
 # rustmatrix
 
+```{image} https://img.shields.io/pypi/v/rustmatrix.svg
+:alt: PyPI
+:target: https://pypi.org/project/rustmatrix/
+```
 ```{image} https://img.shields.io/crates/v/rustmatrix.svg
 :alt: crates.io
 :target: https://crates.io/crates/rustmatrix
