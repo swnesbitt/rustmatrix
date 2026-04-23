@@ -219,9 +219,18 @@ What ships out of the box:
   *S*(v) and *Z*(v) over velocity and hands the result to the existing
   `rustmatrix.radar` helpers, so the spectral and bulk codepaths agree
   to numerical tolerance for every observable.
+* **Beam-pattern × scene integration** (`rustmatrix.spectra.beam`) —
+  when the scene varies across the beam footprint (convective cells,
+  updraft/downdraft couplets, reflectivity gradients) the closed-form
+  σ<sub>beam</sub> no longer captures the physics. `BeamIntegrator`
+  takes a 2-D beam pattern (`GaussianBeam`, `AiryBeam` with the textbook
+  −17.6 dB first sidelobe, or `TabulatedBeam` for measured patterns)
+  plus a `Scene(Z_dBZ, w, u_h)` of user-supplied functions and returns
+  the same `SpectralResult` as `SpectralIntegrator` with the spectrum
+  explicitly averaged over solid angle.
 
 Worked examples that exercise this machinery against published results
-ship as tutorials 07–12 — see the *Guided tour* below.
+ship as tutorials 07–14 — see the *Guided tour* below.
 
 ---
 
@@ -304,10 +313,30 @@ ships as both a runnable `.py` script and a matching `.ipynb` notebook
     directly. A second simulation with half the hail concentration
     appears on every plot so each observable's sensitivity to hail
     number density is immediately visible.
+13. **`13_wind_turbulence_sensitivity.py`** — sweeps horizontal wind
+    *u*<sub>h</sub> ∈ {0, 5, 10, 20} m/s and one-way beamwidth *θ*<sub>b</sub>
+    ∈ {1°, 3°, 5°} at fixed σ<sub>t</sub>² = 0.5 m²/s² for a W-band
+    vertically pointing radar looking at Marshall–Palmer rain. Tabulates
+    the closed-form Doviak–Zrnić σ<sub>beam</sub> = |*u*<sub>h</sub>|·*θ*<sub>b</sub>/(2√(2 ln 2))
+    against the observed spectral width and shows that the first moment
+    is invariant under |*u*<sub>h</sub>| (the beam pattern is an even
+    function of off-axis angle) while the second moment grows in
+    quadrature with σ<sub>beam</sub>.
+14. **`14_beam_pattern_scene.py`** — exercises the new
+    `rustmatrix.spectra.beam` module, which integrates the Doppler
+    spectrum over a 2-D beam pattern applied to a spatially varying
+    scene. A down-looking W-band radar at 20 km altitude scans across
+    45 dBZ convective cells embedded in a 20 dBZ rain background, with
+    three vertical-motion patterns (uniform updraft, alternating
+    updraft/downdraft, dipole couplets centred on each cell) and four
+    beam configurations (1°/3° HPBW × Gaussian/Airy pattern). Shows how
+    main-lobe width smears sub-footprint features and how Airy sidelobes
+    (first sidelobe at −17.6 dB) pull distant bright cells into
+    supposedly quiet moments.
 
 Each script completes in under about 30 s on a laptop so the reader can
 iterate. Every tutorial's module docstring notes which `pytmatrix` section
-it mirrors (tutorials 6–12 cover functionality new to rustmatrix).
+it mirrors (tutorials 6–14 cover functionality new to rustmatrix).
 
 ---
 
@@ -320,6 +349,7 @@ it mirrors (tutorials 6–12 cover functionality new to rustmatrix).
 | `psd` | `pytmatrix.psd` | Particle-size-distribution integration | `PSDIntegrator`, `GammaPSD`, `ExponentialPSD`, `UnnormalizedGammaPSD`, `BinnedPSD` |
 | `hd_mix` | *(new — no pytmatrix equivalent)* | Multi-species hydrometeor mixtures. Scatterer-shaped so `radar.*` helpers work unchanged. | `HydroMix`, `MixtureComponent` |
 | `spectra` | *(new — no pytmatrix equivalent)* | Doppler + polarimetric spectra (sZ_h, sZ_dr, sK_dp, sρ_hv, sδ_hv) for single species or `HydroMix`, with fall-speed presets, Gaussian / Zeng 2023 turbulence, and beam broadening. | `SpectralIntegrator`, `SpectralResult`, `fall_speed.*`, `GaussianTurbulence`, `InertialZeng2023`, `NoTurbulence` |
+| `spectra.beam` | *(new — no pytmatrix equivalent)* | Beam-pattern × scene integration. Evaluates the Doppler spectrum as a pattern-weighted integral over the beam solid angle for a spatially varying *Z*(x, y, z), *w*(x, y, z), *u*<sub>h</sub>(x, y, z). | `BeamPattern`, `GaussianBeam`, `AiryBeam`, `TabulatedBeam`, `Scene`, `BeamIntegrator`, `marshall_palmer_psd_factory` |
 | `radar` | `pytmatrix.radar` | Polarimetric radar observables | `radar_xsect`, `refl` (`Zi`), `Zdr`, `delta_hv`, `rho_hv`, `Kdp`, `Ai` |
 | `scatter` | `pytmatrix.scatter` | Angular-integrated scattering helpers | `sca_intensity`, `sca_xsect`, `ext_xsect`, `ssa`, `asym`, `ldr` |
 | `refractive` | `pytmatrix.refractive` | Refractive-index helpers | `mg_refractive`, `bruggeman_refractive`, `m_w_0C/10C/20C`, `mi`, `ice_refractive` |

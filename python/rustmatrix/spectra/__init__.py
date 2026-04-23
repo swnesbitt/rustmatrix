@@ -71,12 +71,13 @@ try:
 except ImportError:  # numpy < 2.0
     from numpy import trapz as _trapezoid
 
-from . import radar as _radar
-from . import scatter as _scatter
-from .hd_mix import HydroMix, MixtureComponent
-from .psd import PSD
-from .scatterer import Scatterer
-from .tmatrix_aux import geom_vert_back
+from .. import radar as _radar
+from .. import scatter as _scatter
+from ..hd_mix import HydroMix, MixtureComponent
+from ..psd import PSD
+from ..scatterer import Scatterer
+from ..tmatrix_aux import geom_vert_back
+from . import beam  # noqa: F401 — exposes spectra.beam
 
 
 # ---------------------------------------------------------------------------
@@ -941,6 +942,7 @@ class SpectralIntegrator:
 __all__ = [
     "fall_speed",
     "turbulence",
+    "beam",
     "SpectralIntegrator",
     "SpectralResult",
     "NoTurbulence",
