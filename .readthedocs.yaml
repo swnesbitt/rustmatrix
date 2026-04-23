@@ -10,10 +10,12 @@ build:
     rust: "1.82"
   jobs:
     post_install:
-      # Non-editable install: maturin (the build backend) compiles the
-      # Rust extension into a real wheel. An editable install here would
-      # produce only a .pth shim with no compiled _core module.
-      - pip install ".[docs]"
+      # Editable install for docs + explicit `maturin develop` to compile
+      # the Rust extension in-place. RTD doesn't auto-activate its venv
+      # for custom jobs, so pass VIRTUAL_ENV through by hand.
+      - pip install -e ".[docs]"
+      - pip install "maturin>=1.5,<2.0"
+      - VIRTUAL_ENV=$READTHEDOCS_VIRTUALENV_PATH maturin develop --release
 
 sphinx:
   configuration: docs/conf.py

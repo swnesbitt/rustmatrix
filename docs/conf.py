@@ -8,16 +8,13 @@ execute on build with caching via myst-nb.
 
 from __future__ import annotations
 
-import os
-import sys
 from datetime import datetime
 from importlib import metadata as _metadata
-from pathlib import Path
 
-# Make `rustmatrix` importable for autodoc when the docs are built without
-# an editable install (e.g. PR previews that just `pip install .`).
-_repo_root = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(_repo_root / "python"))
+# rustmatrix is expected to be installed into the build environment
+# (RTD's `pip install ".[docs]"` runs maturin, which compiles `_core`).
+# Never insert the `python/` source tree onto sys.path — that shadows
+# the installed package and hides the compiled extension.
 
 # -- Project information -----------------------------------------------------
 

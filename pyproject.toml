@@ -45,6 +45,11 @@ dev = [
     "maturin>=1.5",
     "ruff",
 ]
+examples = [
+    "matplotlib",
+    "jupyter",
+    "ipywidgets",
+]
 docs = [
     "sphinx>=7,<9",
     "myst-parser>=3",
