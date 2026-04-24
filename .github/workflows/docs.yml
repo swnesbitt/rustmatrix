@@ -19,6 +19,7 @@ jobs:
 
       - name: Install package + docs extras
         run: |
+          pip install maturin
           pip install -e ".[docs]"
           maturin develop --release
 
