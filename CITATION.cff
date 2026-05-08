@@ -8,6 +8,7 @@ abstract: >-
   orientation averaging, parallel PSD integration, hydrometeor mixtures,
   and a full Doppler + polarimetric spectra engine.
 version: 2.1.2
+doi: 10.5281/zenodo.20077530
 date-released: "2026-04-23"
 url: "https://github.com/swnesbitt/rustmatrix"
 repository-code: "https://github.com/swnesbitt/rustmatrix"
