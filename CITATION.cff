@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+message: "If you use rustmatrix, please cite it using the metadata below."
+type: software
+title: rustmatrix
+abstract: >-
+  Rust-backed T-matrix scattering for nonspherical hydrometeors.
+  A drop-in replacement for the pytmatrix numerical core with faster
+  orientation averaging, parallel PSD integration, hydrometeor mixtures,
+  and a full Doppler + polarimetric spectra engine.
+version: 2.1.2
+date-released: "2026-04-23"
+url: "https://github.com/swnesbitt/rustmatrix"
+repository-code: "https://github.com/swnesbitt/rustmatrix"
+license: MIT
+authors:
+  - family-names: Nesbitt
+    given-names: Stephen W.
+    orcid: "https://orcid.org/0000-0003-0348-0452"
+    affiliation: "University of Illinois Urbana-Champaign"
+keywords:
+  - radar meteorology
+  - T-matrix
+  - scattering
+  - polarimetric radar
+  - particle size distribution
+  - Rust
+  - Python
