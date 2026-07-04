@@ -18,7 +18,12 @@ use crate::tmatrix::{calctmat as rs_calctmat, TMatrixConfig, TMatrixState};
 /// Opaque handle wrapping `TMatrixState`. Python calls `calctmat(...)` and
 /// gets back this handle plus `nmax`; subsequent `calcampl(handle, ...)`
 /// reuses the state.
-#[pyclass]
+///
+/// `frozen`: the state is immutable after construction, so many Python
+/// threads may evaluate amplitudes against the same handle concurrently
+/// (on both GIL-enabled and free-threaded builds) without borrow-flag
+/// contention.
+#[pyclass(frozen)]
 pub struct TMatrixHandle {
     state: TMatrixState,
     lam: f64,
@@ -45,9 +50,14 @@ impl TMatrixHandle {
 }
 
 /// Python-visible `calctmat`. Returns `(handle, nmax)`.
+///
+/// The T-matrix build (the expensive part) runs detached from the Python
+/// runtime — i.e. with the GIL released on GIL-enabled builds — so
+/// multiple Python threads calling `calctmat` execute truly in parallel.
 #[pyfunction]
 #[pyo3(signature = (axi, rat, lam, mrr, mri, eps, np, ddelt, ndgs))]
 pub fn calctmat(
+    py: Python<'_>,
     axi: f64,
     rat: f64,
     lam: f64,
@@ -74,7 +84,7 @@ pub fn calctmat(
         ddelt,
         ndgs,
     };
-    let state = rs_calctmat(cfg);
+    let state = py.detach(|| rs_calctmat(cfg));
     let nmax = state.nmax;
     Ok((TMatrixHandle { state, lam }, nmax))
 }
@@ -96,10 +106,13 @@ pub fn calcampl_py<'py>(
     // Allow overriding lam (mirrors Fortran signature); otherwise use the one
     // cached on the handle.
     let lam_eff = if lam > 0.0 { lam } else { handle.lam };
-    let (s, z) = calcampl(&handle.state, lam_eff, thet0, thet, phi0, phi, alpha, beta);
+    // Evaluate detached (GIL released) — amplitude evaluation is pure Rust
+    // over the immutable state, so Python threads can run these in parallel.
+    let (s, z) =
+        py.detach(|| calcampl(&handle.state, lam_eff, thet0, thet, phi0, phi, alpha, beta));
     let s_arr = ndarray::Array2::from_shape_fn((2, 2), |(i, j)| s[i][j]);
     let z_arr = ndarray::Array2::from_shape_fn((4, 4), |(i, j)| z[i][j]);
-    Ok((s_arr.into_pyarray_bound(py), z_arr.into_pyarray_bound(py)))
+    Ok((s_arr.into_pyarray(py), z_arr.into_pyarray(py)))
 }
 
 /// Mie scattering efficiency — exposed for testing and convenience.
@@ -174,7 +187,7 @@ pub fn tabulate_scatter_table<'py>(
     let z_stride = ng * 16;
 
     // Heavy compute: parallel across diameters, GIL released.
-    py.allow_threads(|| {
+    py.detach(|| {
         // Split the flat output slices into per-diameter chunks so each
         // rayon task writes to a disjoint region — zero contention.
         s_flat
@@ -214,7 +227,7 @@ pub fn tabulate_scatter_table<'py>(
         .map_err(|e| PyValueError::new_err(e.to_string()))?;
     let z_arr = ndarray::Array4::from_shape_vec((n, ng, 4, 4), z_flat)
         .map_err(|e| PyValueError::new_err(e.to_string()))?;
-    Ok((s_arr.into_pyarray_bound(py), z_arr.into_pyarray_bound(py)))
+    Ok((s_arr.into_pyarray(py), z_arr.into_pyarray(py)))
 }
 
 /// Batch tabulator with fixed-quadrature orientation averaging.
@@ -290,7 +303,7 @@ pub fn tabulate_scatter_table_orient_avg<'py>(
     let s_stride = ng * 4;
     let z_stride = ng * 16;
 
-    py.allow_threads(|| {
+    py.detach(|| {
         s_flat
             .par_chunks_mut(s_stride)
             .zip(z_flat.par_chunks_mut(z_stride))
@@ -345,7 +358,7 @@ pub fn tabulate_scatter_table_orient_avg<'py>(
         .map_err(|e| PyValueError::new_err(e.to_string()))?;
     let z_arr = ndarray::Array4::from_shape_vec((n, ng, 4, 4), z_flat)
         .map_err(|e| PyValueError::new_err(e.to_string()))?;
-    Ok((s_arr.into_pyarray_bound(py), z_arr.into_pyarray_bound(py)))
+    Ok((s_arr.into_pyarray(py), z_arr.into_pyarray(py)))
 }
 
 /// Batch tabulator with per-diameter angular-integrated quantities.
@@ -444,7 +457,7 @@ pub fn tabulate_scatter_table_with_angular<'py>(
     let z_stride = ng * 16;
     let ang_stride = ng * 2;
 
-    py.allow_threads(|| {
+    py.detach(|| {
         s_flat
             .par_chunks_mut(s_stride)
             .zip(z_flat.par_chunks_mut(z_stride))
@@ -544,11 +557,11 @@ pub fn tabulate_scatter_table_with_angular<'py>(
     let asym_arr = ndarray::Array3::from_shape_vec((n, ng, 2), asym_flat)
         .map_err(|e| PyValueError::new_err(e.to_string()))?;
     Ok((
-        s_arr.into_pyarray_bound(py),
-        z_arr.into_pyarray_bound(py),
-        sca_arr.into_pyarray_bound(py),
-        ext_arr.into_pyarray_bound(py),
-        asym_arr.into_pyarray_bound(py),
+        s_arr.into_pyarray(py),
+        z_arr.into_pyarray(py),
+        sca_arr.into_pyarray(py),
+        ext_arr.into_pyarray(py),
+        asym_arr.into_pyarray(py),
     ))
 }
 

@@ -1,6 +1,6 @@
 [package]
 name = "rustmatrix"
-version = "2.1.1"
+version = "2.2.0"
 edition = "2021"
 authors = ["Stephen Nesbitt <snesbitt@illinois.edu>"]
 license = "MIT"
@@ -18,18 +18,26 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 num-complex = "0.4"
-ndarray = "0.16"
+# Must stay within the range the `numpy` crate accepts (currently
+# ">=0.15, <=0.17") so both resolve to ONE ndarray and numpy's
+# IntoPyArray impls apply to our arrays.
+ndarray = ">=0.16, <=0.17"
 nalgebra = { version = "0.33", features = ["std"] }
-numpy = "0.22"
+numpy = "0.28"
 rayon = "1.10"
 
 [dependencies.pyo3]
-version = "0.22"
+version = "0.28"
 # `extension-module` is deliberately NOT in default features: it tells
 # pyo3 to skip linking libpython, which breaks `cargo publish` and
 # docs.rs. Enable it via the `extension-module` feature below — the
 # maturin build in pyproject.toml does exactly that.
-features = ["abi3-py38", "num-complex"]
+#
+# `abi3-py39` produces one stable-ABI wheel per platform for GIL-enabled
+# CPython >= 3.9. Free-threaded CPython (3.13t+) has no limited API, so
+# pyo3 ignores abi3 there and version-specific cp313t/cp314t wheels are
+# built in CI instead.
+features = ["abi3-py39", "num-complex"]
 
 [features]
 extension-module = ["pyo3/extension-module"]

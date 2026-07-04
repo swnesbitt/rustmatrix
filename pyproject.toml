@@ -1,10 +1,11 @@
 [build-system]
-requires = ["maturin>=1.5,<2.0"]
+# maturin >= 1.8 for solid free-threaded (cp313t/cp314t) build support.
+requires = ["maturin>=1.8,<2.0"]
 build-backend = "maturin"
 
 [project]
 name = "rustmatrix"
-version = "2.1.1"
+version = "2.2.0"
 description = "Rust-backed T-matrix scattering for nonspherical particles (port of pytmatrix)"
 readme = "README.md"
 license = { text = "MIT" }
@@ -22,6 +23,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Programming Language :: Rust",
     "Topic :: Scientific/Engineering :: Physics",
     "Topic :: Scientific/Engineering :: Atmospheric Science",
@@ -81,12 +83,13 @@ Repository = "https://github.com/swnesbitt/rustmatrix"
 Issues = "https://github.com/swnesbitt/rustmatrix/issues"
 
 [tool.maturin]
-# Target Python 3.13 (plus back-compat via abi3-py38). The extension
-# lives under `python/rustmatrix/` alongside pure-Python modules.
+# One abi3-py39 wheel per platform covers all GIL-enabled CPythons >= 3.9.
+# Free-threaded CPython (3.13t+) has no limited API, so CI additionally
+# builds version-specific cp313t/cp314t wheels (see release.yml). The
+# extension lives under `python/rustmatrix/` alongside pure-Python modules.
 python-source = "python"
 module-name = "rustmatrix._core"
 features = ["extension-module"]
-# Ensure abi3 so a single wheel works across Python versions.
 strip = true
 
 [tool.pytest.ini_options]

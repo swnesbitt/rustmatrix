@@ -96,7 +96,14 @@ from .hd_mix import HydroMix, MixtureComponent  # noqa: F401
 from .scatterer import Scatterer, TMatrix  # noqa: F401
 from .spectra import SpectralIntegrator, SpectralResult  # noqa: F401
 
-__version__ = "0.1.0"
+# Single source of truth is pyproject.toml; read it from the installed
+# distribution metadata rather than duplicating it here.
+try:
+    from importlib.metadata import version as _dist_version
+
+    __version__ = _dist_version("rustmatrix")
+except Exception:  # pragma: no cover — running from a source tree
+    __version__ = "2.2.0"
 __all__ = [
     "Scatterer",
     "TMatrix",

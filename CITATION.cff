@@ -7,7 +7,7 @@ abstract: >-
   A drop-in replacement for the pytmatrix numerical core with faster
   orientation averaging, parallel PSD integration, hydrometeor mixtures,
   and a full Doppler + polarimetric spectra engine.
-version: 2.1.2
+version: 2.2.0
 doi: 10.5281/zenodo.20077529
 date-released: "2026-04-23"
 url: "https://github.com/swnesbitt/rustmatrix"

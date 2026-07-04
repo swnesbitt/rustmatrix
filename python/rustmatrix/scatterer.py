@@ -7,6 +7,14 @@ Rust single-orientation evaluator in a loop). PSD integration is routed
 through :mod:`rustmatrix.psd`, whose fast paths run inside Rust with the
 GIL released and parallelise across diameters via rayon.
 
+All Rust entrypoints — including the single-particle T-matrix build and
+amplitude evaluation used by this class — release the GIL for their
+heavy compute, so independent ``Scatterer`` instances can be driven from
+Python threads (``concurrent.futures.ThreadPoolExecutor``, dask's
+threaded scheduler) with near-linear scaling. The cached ``_handle`` is
+immutable and safe to share across threads. Free-threaded CPython
+(3.13t+) is fully supported.
+
 Notes
 -----
 The Rust extension caches the built T-matrix on the ``_handle`` attribute
