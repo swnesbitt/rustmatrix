@@ -43,8 +43,12 @@ jobs:
       - name: Build + install wheel
         # maturin develop requires a virtualenv; CI's system Python has none,
         # so build a wheel and install it instead.
+        #
+        # `-i python` pins the build to this job's interpreter: on the
+        # free-threaded (t) entries maturin then ignores abi3 and produces
+        # an installable cp31Xt wheel instead of a cp39-abi3 one.
         run: |
-          maturin build --release --out dist
+          maturin build --release --out dist -i python
           pip install --no-index --find-links=dist rustmatrix
       - name: Run tests (without pytmatrix — parity tests skipped)
         run: pytest -v tests/
