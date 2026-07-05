@@ -88,8 +88,8 @@ the batch tabulators. Building scatterers from a
 `concurrent.futures.ThreadPoolExecutor` (or dask's threaded scheduler)
 scales near-linearly with cores, and `TMatrixHandle` is immutable, so
 one handle can be evaluated from many threads at once. Free-threaded
-CPython (3.13t/3.14t) is supported natively: the module declares
-`gil_used = false` and ships dedicated `cp313t`/`cp314t` wheels. See
+CPython (3.14t+) is supported natively: the module declares
+`gil_used = false` and ships dedicated `cp314t` wheels. See
 [the profiling how-to](https://rustmatrix.readthedocs.io/en/latest/howto/profiling.html)
 for how to measure on your own workload, and
 `benches/bench_vs_pytmatrix.py` for the head-to-head script.

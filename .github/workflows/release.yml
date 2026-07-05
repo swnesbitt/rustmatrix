@@ -4,8 +4,9 @@ name: Release
 #
 # In addition to the abi3 wheels (one per platform, covering all
 # GIL-enabled CPython >= 3.9), the `*-freethreaded` jobs build
-# version-specific cp313t/cp314t wheels: the free-threaded build has no
-# limited API, so abi3 cannot cover it.
+# version-specific cp314t wheels: the free-threaded build has no
+# limited API, so abi3 cannot cover it, and maturin supports
+# free-threaded CPython from 3.14 onward.
 #
 # Triggers:
 # * Tag push matching `v*` (e.g. `v2.1.1`) — the normal release path.
@@ -58,20 +59,15 @@ jobs:
         target: [x86_64, aarch64]
     steps:
       - uses: actions/checkout@v4
-      # Install free-threaded interpreters on the runner; maturin-action
-      # mounts the toolcache into the manylinux container, where the
-      # container's own /opt/python interpreters don't include -t builds.
-      - uses: actions/setup-python@v5
-        with:
-          python-version: |
-            3.13t
-            3.14t
       - name: Build free-threaded wheels
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist -i python3.13t -i python3.14t
-          manylinux: auto
+          # maturin supports free-threaded CPython from 3.14 only, and the
+          # cp314t interpreter ships in the manylinux_2_28 images (the
+          # default manylinux2014 image stops earlier) — hence the pin.
+          args: --release --out dist -i python3.14t
+          manylinux: 2_28
       - uses: actions/upload-artifact@v4
         with:
           name: wheels-linux-freethreaded-${{ matrix.target }}
@@ -110,14 +106,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: |
-            3.13t
-            3.14t
+          # maturin supports free-threaded CPython from 3.14 only.
+          python-version: "3.14t"
       - name: Build free-threaded wheels
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist -i python3.13t -i python3.14t
+          args: --release --out dist -i python3.14t
       - uses: actions/upload-artifact@v4
         with:
           name: wheels-macos-freethreaded-${{ matrix.target }}
@@ -149,15 +144,14 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: |
-            3.13t
-            3.14t
+          # maturin supports free-threaded CPython from 3.14 only.
+          python-version: "3.14t"
           architecture: x64
       - name: Build free-threaded wheels
         uses: PyO3/maturin-action@v1
         with:
           target: x64
-          args: --release --out dist -i python3.13t -i python3.14t
+          args: --release --out dist -i python3.14t
       - uses: actions/upload-artifact@v4
         with:
           name: wheels-windows-freethreaded-x64

@@ -13,7 +13,7 @@ heavy compute, so independent ``Scatterer`` instances can be driven from
 Python threads (``concurrent.futures.ThreadPoolExecutor``, dask's
 threaded scheduler) with near-linear scaling. The cached ``_handle`` is
 immutable and safe to share across threads. Free-threaded CPython
-(3.13t+) is fully supported.
+(3.14t+) is fully supported.
 
 Notes
 -----

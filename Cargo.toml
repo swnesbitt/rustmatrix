@@ -34,9 +34,9 @@ version = "0.28"
 # maturin build in pyproject.toml does exactly that.
 #
 # `abi3-py39` produces one stable-ABI wheel per platform for GIL-enabled
-# CPython >= 3.9. Free-threaded CPython (3.13t+) has no limited API, so
-# pyo3 ignores abi3 there and version-specific cp313t/cp314t wheels are
-# built in CI instead.
+# CPython >= 3.9. Free-threaded CPython (3.14t+) has no limited API, so
+# pyo3 ignores abi3 there and version-specific cp314t wheels are built
+# in CI instead.
 features = ["abi3-py39", "num-complex"]
 
 [features]

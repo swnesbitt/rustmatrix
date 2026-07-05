@@ -84,9 +84,9 @@ Issues = "https://github.com/swnesbitt/rustmatrix/issues"
 
 [tool.maturin]
 # One abi3-py39 wheel per platform covers all GIL-enabled CPythons >= 3.9.
-# Free-threaded CPython (3.13t+) has no limited API, so CI additionally
-# builds version-specific cp313t/cp314t wheels (see release.yml). The
-# extension lives under `python/rustmatrix/` alongside pure-Python modules.
+# Free-threaded CPython (3.14t+) has no limited API, so CI additionally
+# builds version-specific cp314t wheels (see release.yml). The extension
+# lives under `python/rustmatrix/` alongside pure-Python modules.
 python-source = "python"
 module-name = "rustmatrix._core"
 features = ["extension-module"]

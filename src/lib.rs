@@ -68,7 +68,7 @@ use pyo3::prelude::*;
 /// Python module entrypoint. Maturin wires this up as `rustmatrix._core`.
 ///
 /// `gil_used = false` declares the module thread-safe, so free-threaded
-/// CPython (3.13t+) keeps the GIL disabled when it is imported. This is
+/// CPython (3.14t+) keeps the GIL disabled when it is imported. This is
 /// sound because all exposed state is immutable after construction
 /// (`TMatrixHandle` is a frozen pyclass over plain `Send + Sync` data)
 /// and every entrypoint detaches from the runtime for its heavy compute.
