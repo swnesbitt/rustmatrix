@@ -58,12 +58,18 @@ jobs:
         target: [x86_64, aarch64]
     steps:
       - uses: actions/checkout@v4
+      # Install free-threaded interpreters on the runner; maturin-action
+      # mounts the toolcache into the manylinux container, where the
+      # container's own /opt/python interpreters don't include -t builds.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: |
+            3.13t
+            3.14t
       - name: Build free-threaded wheels
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
-          # The manylinux containers ship free-threaded interpreters, so
-          # they are selected by name rather than via setup-python.
           args: --release --out dist -i python3.13t -i python3.14t
           manylinux: auto
       - uses: actions/upload-artifact@v4
